@@ -48,6 +48,14 @@ fn b64_encode(b: &[u8]) -> Vec<u8> {
     result
 }
 
+#[allow(dead_code)]
+fn print_vec(v: &[u8]) {
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    out.write_all(v).unwrap();
+    out.write_all(&[ '\n' as u8 ]).unwrap();
+}
+
 fn challenge1() {
     let input = "49276d206b696c6c696e6720796f7572\
                  20627261696e206c696b65206120706f\
@@ -56,14 +64,27 @@ fn challenge1() {
                     aWtlIGEgcG9pc29ub3VzIG11c2hyb29t".as_bytes();
     let raw = hex_decode(input);
     let b64 = b64_encode(&raw);
-    let stdout = std::io::stdout();
-    let mut out = stdout.lock();
-    out.write_all(&b64).unwrap();
-    out.write_all(&[ '\n' as u8 ]).unwrap();
+    // print_vec(&b64);
     assert_eq!(expected, b64.as_slice());
     println!("Challenge 1: Success.");
 }
 
+fn xor(a: &[u8], b: &[u8]) -> Vec<u8> {
+    a.iter().zip(b).map(|x| x.0 ^ x.1).collect()
+}
+
+fn challenge2() {
+    let input1 = "1c0111001f010100061a024b53535009181c".as_bytes();
+    let input2 = "686974207468652062756c6c277320657965".as_bytes();
+    let expected = "746865206b696420646f6e277420706c6179".as_bytes();
+    let result = xor(
+        hex_decode(input1).as_slice(),
+        hex_decode(input2).as_slice());
+    assert_eq!(hex_decode(expected).as_slice(), result.as_slice());
+    println!("Challenge 2: Success.");
+}
+
 fn main() {
     challenge1();
+    challenge2();
 }
