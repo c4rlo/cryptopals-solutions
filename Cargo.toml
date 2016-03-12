@@ -1,0 +1,6 @@
+[package]
+name = "cryptopals-solns"
+version = "0.1.0"
+authors = ["Carlo Teubner <carlo.teubner@gmail.com>"]
+
+[dependencies]
