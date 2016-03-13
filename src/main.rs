@@ -1,4 +1,3 @@
-use std::iter;
 use std::io::{BufReader,BufRead,Read,Write};
 use std::fs::File;
 
@@ -85,7 +84,7 @@ fn print_data(v: &[u8]) {
 }
 
 fn xor<I1: Iterator<Item=u8>, I2: Iterator<Item=u8>>(x1: I1, x2: I2) -> Vec<u8> {
-    x1.zip(x2).map(|x| x.0 ^ x.1).collect()
+    x1.zip(x2).map(|(a, b)| a ^ b).collect()
 }
 
 fn xor_crypt<I1: Iterator<Item=u8>, I2: Iterator<Item=u8> + Clone>(content: I1, key: I2)
@@ -109,7 +108,7 @@ fn chardist<I: Iterator<Item=u8>>(bytes: I) -> [f64; 256] {
 }
 
 fn chardist_diff(a: &[f64; 256], b: &[f64; 256]) -> f64 {
-    a.iter().zip(b.iter()).fold(0f64, |acc, x| acc + (x.0 - x.1).powi(2))
+    a.iter().zip(b.iter()).fold(0f64, |acc, (x, y)| acc + (x - y).powi(2))
 }
 
 fn corpus_chardist() -> [f64; 256] {
@@ -139,7 +138,7 @@ fn crack_single_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> SingleXorCandi
     let mut best = SingleXorCandidate::new();
     for i in 0..256 {
         let key_byte = i as u8;
-        let decryption = xor(ciphertext.iter().cloned(), iter::repeat(key_byte));
+        let decryption = xor(ciphertext.iter().cloned(), std::iter::repeat(key_byte));
         let badness = chardist_diff(&chardist(decryption.iter().cloned()), &corpus_cd);
         if badness < best.badness {
             best = SingleXorCandidate {
