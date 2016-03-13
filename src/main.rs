@@ -1,5 +1,4 @@
 use std::iter;
-use std::borrow::Borrow;
 use std::io::{BufReader,Read,Write};
 use std::fs::File;
 
@@ -59,48 +58,15 @@ fn print_data(v: &[u8]) {
     out.write_all(&[ '\n' as u8 ]).unwrap();
 }
 
-fn challenge1() {
-    let input = "49276d206b696c6c696e6720796f7572\
-                 20627261696e206c696b65206120706f\
-                 69736f6e6f7573206d757368726f6f6d".as_bytes();
-    let expected = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBs\
-                    aWtlIGEgcG9pc29ub3VzIG11c2hyb29t".as_bytes();
-    let raw = hex_decode(input);
-    let b64 = b64_encode(&raw);
-    // print_data(&b64);
-    assert_eq!(expected, b64.as_slice());
-    println!("Challenge 1: Success.");
+fn xor<I1: Iterator<Item=u8>, I2: Iterator<Item=u8>>(x1: I1, x2: I2) -> Vec<u8> {
+    x1.zip(x2).map(|x| x.0 ^ x.1).collect()
 }
 
-fn xor(a: &[u8], b: &[u8]) -> Vec<u8> {
-    assert_eq!(a.len(), b.len());
-    a.iter().zip(b).map(|x| x.0 ^ x.1).collect()
-}
-
-fn challenge2() {
-    let input1 = "1c0111001f010100061a024b53535009181c".as_bytes();
-    let input2 = "686974207468652062756c6c277320657965".as_bytes();
-    let expected = "746865206b696420646f6e277420706c6179".as_bytes();
-    let result = xor(
-        hex_decode(input1).as_slice(),
-        hex_decode(input2).as_slice());
-    assert_eq!(hex_decode(expected).as_slice(), result.as_slice());
-    println!("Challenge 2: Success.");
-}
-
-fn corpus_chardist() -> [f64; 256] {
-    let file = BufReader::new(File::open("corpus.txt").unwrap());
-    let bytes = file.bytes().map(|r| r.unwrap());
-    let mut filtered_bytes = bytes.filter(|&b| b != ('\n' as u8));
-    chardist(&mut filtered_bytes)
-}
-
-fn chardist<B, I: Iterator<Item=B>>(bytes: &mut I) -> [f64; 256]
-            where B: Borrow<u8> {
+fn chardist<I: Iterator<Item=u8>>(bytes: I) -> [f64; 256] {
     let mut counts = [0u64; 256];
     let mut total = 0u64;
     for b in bytes { 
-        counts[*b.borrow() as usize] += 1;
+        counts[b as usize] += 1;
         total += 1;
     }
     let totalf = total as f64;
@@ -115,28 +81,71 @@ fn chardist_diff(a: &[f64; 256], b: &[f64; 256]) -> f64 {
     a.iter().zip(b.iter()).fold(0f64, |acc, x| acc + (x.0 - x.1).powi(2))
 }
 
+fn corpus_chardist() -> [f64; 256] {
+    let file = BufReader::new(File::open("corpus.txt").unwrap());
+    let bytes = file.bytes().map(|r| r.unwrap());
+    let filtered_bytes = bytes.filter(|&b| b != ('\n' as u8));
+    chardist(filtered_bytes)
+}
+
+struct SingleXorCandidate {
+    badness: f64,
+    key_byte: u8,
+    decryption: Vec<u8>
+}
+
+fn crack_single_xor(ciphertext: &[u8]) -> SingleXorCandidate {
+    let ciphertext_len = ciphertext.len();
+    let corpus_cd = corpus_chardist();
+    let mut best = SingleXorCandidate {
+        badness: std::f64::INFINITY,
+        key_byte: 0u8,
+        decryption: Vec::new()
+    };
+    for i in 0..256 {
+        let key_byte = i as u8;
+        let decryption = xor(
+            ciphertext.iter().cloned(),
+            iter::repeat(key_byte).take(ciphertext_len));
+        let badness = chardist_diff(&chardist(decryption.iter().cloned()), &corpus_cd);
+        if badness < best.badness {
+            best = SingleXorCandidate {
+                badness: badness, key_byte: key_byte, decryption: decryption };
+        }
+    }
+    best
+}
+
+fn challenge1() {
+    let input = "49276d206b696c6c696e6720796f7572\
+                 20627261696e206c696b65206120706f\
+                 69736f6e6f7573206d757368726f6f6d".as_bytes();
+    let expected = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBs\
+                    aWtlIGEgcG9pc29ub3VzIG11c2hyb29t".as_bytes();
+    let raw = hex_decode(input);
+    let b64 = b64_encode(&raw);
+    // print_data(&b64);
+    assert_eq!(expected, b64.as_slice());
+    println!("Challenge 1: Success.");
+}
+
+fn challenge2() {
+    let input1 = "1c0111001f010100061a024b53535009181c".as_bytes();
+    let input2 = "686974207468652062756c6c277320657965".as_bytes();
+    let expected = "746865206b696420646f6e277420706c6179".as_bytes();
+    let result = xor(
+        hex_decode(input1).iter().cloned(),
+        hex_decode(input2).iter().cloned());
+    assert_eq!(hex_decode(expected).as_slice(), result.as_slice());
+    println!("Challenge 2: Success.");
+}
+
 fn challenge3() {
     let input = hex_decode("1b37373331363f78151b7f2b783431333d\
                             78397828372d363c78373e783a393b3736".as_bytes());
-    let input_len = input.len();
-    let corpus_cd = corpus_chardist();
-    let mut best_dist = std::f64::INFINITY;
-    let mut best_key = 0u8;
-    let mut best_plaintext = Vec::new();
-    for i in 0..256 {
-        let b = i as u8;
-        let key: Vec<u8> = iter::repeat(b).take(input_len).collect();
-        let cand = xor(input.as_slice(), key.as_slice());
-        let dist = chardist_diff(&chardist(&mut cand.iter()), &corpus_cd);
-        if dist < best_dist {
-            // println!("Best dist now {}", dist);
-            best_dist = dist;
-            best_key = b;
-            best_plaintext = cand;
-        }
-    }
-    print!("Challenge 3: key={}; ", best_key);
-    print_data(best_plaintext.as_slice());
+    let cracked = crack_single_xor(&input);
+    print!("Challenge 3: key={}; ", cracked.key_byte);
+    print_data(&cracked.decryption);
 }
 
 fn main() {
