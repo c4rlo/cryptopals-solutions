@@ -205,6 +205,52 @@ fn edit_distance(a: &[u8], b: &[u8]) -> usize {
     result
 }
 
+fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
+    struct ScoredKeysize {
+        keysize: usize,
+        badness: f64
+    }
+
+    let mut scored_keysizes = Vec::new();
+
+    for keysize in 2..41 {
+        let mut ed_sum = 0f64;
+        const N: usize = 10;
+        for i in 0..N {
+            let chunk1 = &ciphertext[(keysize*i) .. (keysize*(i+1))];
+            let chunk2 = &ciphertext[(keysize*(i+1)) .. (keysize*(i+2))];
+            ed_sum += edit_distance(chunk1, chunk2) as f64;
+        }
+        scored_keysizes.push(ScoredKeysize {
+            keysize: keysize,
+            badness: ed_sum / N as f64 / keysize as f64 });
+    }
+
+    scored_keysizes.sort_by(|a, b| a.badness.partial_cmp(&b.badness).unwrap());
+
+    let mut best_key = Vec::new();
+
+    for sk in scored_keysizes.iter().take(5) {
+        let keysize = sk.keysize;
+        let mut key = Vec::new();
+        for i in 0..keysize {
+            let cracked = crack_single_xor(
+                ciphertext.iter().enumerate().filter_map(
+                    |(j, c)| if j % sk.keysize == i { Some(*c) } else { None })
+                .collect::<Vec<u8>>().as_slice(),
+                &corpus_cd);
+            key.push(cracked.key_byte);
+        }
+        println!("  Keysize {} has badness {}, key {:?} = \"{}\"", sk.keysize, sk.badness, key,
+                 String::from_utf8_lossy(&key));
+        if best_key.len() == 0 {
+            best_key = key;
+        }
+    }
+
+    xor_crypt(ciphertext.iter().cloned(), best_key.iter().cloned())
+}
+
 fn challenge1() {
     let input = "49276d206b696c6c696e6720796f7572\
                  20627261696e206c696b65206120706f\
@@ -237,8 +283,7 @@ fn challenge3() {
     print_data(&cracked.decryption);
 }
 
-fn challenge4() {
-    let corpus_cd = corpus_chardist();
+fn challenge4(corpus_cd: &[f64; 256]) {
     let mut best = SingleXorCandidate::new();
     for line in BufReader::new(File::open("4.txt").unwrap()).lines() {
         let ciphertext = hex_decode(line.unwrap().as_bytes());
@@ -262,23 +307,23 @@ fn challenge5() {
     println!("Challenge 5: Success.");
 }
 
-fn challenge6() {
+fn challenge6(corpus_cd: &[f64; 256]) {
     assert_eq!(37, edit_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()));
     println!("Challenge 6: Edit distance works.");
 
     let file = BufReader::new(File::open("6.txt").unwrap());
     let bytes = file.bytes().map(|r| r.unwrap());
     let ciphertext = Base64Codec::new().decode(bytes);
-
-    for keysize in 2..41 {
-    }
+    let cracked = crack_repeating_xor(&ciphertext, corpus_cd);
+    print!("Challenge 6:\n{}", String::from_utf8_lossy(&cracked));
 }
 
 fn main() {
     challenge1();
     challenge2();
     challenge3();
-    challenge4();
+    let corpus_cd = corpus_chardist();
+    challenge4(&corpus_cd);
     challenge5();
-    challenge6();
+    challenge6(&corpus_cd);
 }
