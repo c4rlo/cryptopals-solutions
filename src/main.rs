@@ -14,12 +14,44 @@ fn hexdigit_decode(d: u8) -> u8 {
 }
 
 fn hex_decode(h: &[u8]) -> Vec<u8> {
-    // h.chunks(2).map(|pair| 16 * hexdigit_decode(pair[0]) + hexdigit_decode(pair[1]))
-    let mut result = Vec::new();
-    for pair in h.chunks(2) {
-        result.push(16 * hexdigit_decode(pair[0]) + hexdigit_decode(pair[1]));
+    // We want to write the below, but as of Rust 1.7, slice pattern syntax is unstable.
+    // h.chunks(2).map(|[a, b]| 16 * hexdigit_decode(a) + hexdigit_decode(b)).collect()
+    h.chunks(2).map(|pair| 16 * hexdigit_decode(pair[0]) + hexdigit_decode(pair[1])).collect()
+}
+
+struct IterChunker<I: Iterator> {
+    inner: I,
+    chunk_size: usize
+}
+
+impl<I: Iterator> Iterator for IterChunker<I> {
+    type Item = Vec<I::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.inner.next() {
+            None => None,
+            Some(x) => {
+                let mut result = vec![x];
+                for _ in 1..self.chunk_size {
+                    match self.inner.next() {
+                        None => break,
+                        Some(y) => result.push(y)
+                    }
+                }
+                Some(result)
+            }
+        }
     }
-    result
+}
+
+trait Chunkable<I: Iterator> {
+    fn chunks(self, chunk_size: usize) -> IterChunker<I>;
+}
+
+impl<I: Iterator> Chunkable<I> for I {
+    fn chunks(self, chunk_size: usize) -> IterChunker<I> {
+        IterChunker { inner: self, chunk_size: chunk_size }
+    }
 }
 
 const BASE64CHARS: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\
@@ -70,12 +102,26 @@ impl Base64Codec {
         result
     }
 
-    fn decode(&self, b: &[u8]) -> Vec<u8> {
-        unimplemented!();
+    fn decode<I: Iterator<Item=u8>>(&self, b: I) -> Vec<u8> {
+        let mut result = Vec::new();
+        for quad in b.filter(|&b| b != ('\n' as u8)).chunks(4) {
+            let len = quad.iter().cloned().take_while(|&b| b != ('=' as u8)).count();
+            let q0 = self.dec_map[quad[0] as usize];
+            let q1 = self.dec_map[quad[1] as usize];
+            let q2 = if len >= 3 { self.dec_map[quad[2] as usize] } else { 0u8 };
+            let q3 = if len >= 4 { self.dec_map[quad[3] as usize] } else { 0u8 };
+            result.push((q0 << 2) | (q1 >> 4));
+            if len >= 3 {
+                result.push((q1 << 4) | (q2 >> 2));
+            }
+            if len >= 4 {
+                result.push((q2 << 6) | q3);
+            }
+        }
+        result
     }
 }
 
-#[allow(dead_code)]
 fn print_data(v: &[u8]) {
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
@@ -148,6 +194,17 @@ fn crack_single_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> SingleXorCandi
     best
 }
 
+fn edit_distance(a: &[u8], b: &[u8]) -> usize {
+    // We want to write the below, but as of Rust 1.7, the 'sum()' method is unstable
+    // a.iter().zip(b.iter()).map(|(&x, &y)| (x ^ y).count_ones()).sum::<u32>() as usize
+
+    let mut result = 0usize;
+    for n in a.iter().zip(b.iter()).map(|(&x, &y)| (x ^ y).count_ones()) {
+        result += n as usize;
+    }
+    result
+}
+
 fn challenge1() {
     let input = "49276d206b696c6c696e6720796f7572\
                  20627261696e206c696b65206120706f\
@@ -205,10 +262,23 @@ fn challenge5() {
     println!("Challenge 5: Success.");
 }
 
+fn challenge6() {
+    assert_eq!(37, edit_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()));
+    println!("Challenge 6: Edit distance works.");
+
+    let file = BufReader::new(File::open("6.txt").unwrap());
+    let bytes = file.bytes().map(|r| r.unwrap());
+    let ciphertext = Base64Codec::new().decode(bytes);
+
+    for keysize in 2..41 {
+    }
+}
+
 fn main() {
     challenge1();
     challenge2();
     challenge3();
     challenge4();
     challenge5();
+    challenge6();
 }
