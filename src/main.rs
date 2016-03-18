@@ -1,5 +1,6 @@
 extern crate crypto;
 
+use std::collections::HashSet;
 use std::io::{BufReader,BufRead,Read,Write};
 use std::fs::File;
 use crypto::{aes,blockmodes};
@@ -342,6 +343,20 @@ fn challenge7(b64: &Base64Codec) {
     print!("Challenge 7:\n{}", String::from_utf8_lossy(&decrypted));
 }
 
+fn challenge8() {
+    const SIZE: usize = 16;
+    for (line_no, line) in BufReader::new(File::open("8.txt").unwrap()).lines().enumerate() {
+        let ciphertext = hex_decode(line.unwrap().as_bytes());
+        let mut chunk_set = HashSet::new();
+        for chunk in ciphertext.chunks(SIZE) {
+            chunk_set.insert(chunk);
+        }
+        if chunk_set.len() < ciphertext.len() / SIZE {
+            println!("Challenge 8: Line {} is ECB", line_no + 1);
+        }
+    }
+}
+
 fn main() {
     let b64 = Base64Codec::new();
     let corpus_cd = corpus_chardist();
@@ -352,4 +367,5 @@ fn main() {
     challenge5();
     challenge6(&b64, &corpus_cd);
     challenge7(&b64);
+    challenge8();
 }
