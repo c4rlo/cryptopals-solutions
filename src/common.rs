@@ -1,4 +1,6 @@
 use std;
+use std::fmt;
+use std::ascii;
 use std::io::{BufReader,Read,Write};
 use std::fs::File;
 
@@ -130,6 +132,25 @@ pub fn print_data(v: &[u8]) {
     out.write_all(&[ '\n' as u8 ]).unwrap();
 }
 
+pub struct EscapedStr<'a> {
+    v: &'a [u8]
+}
+
+impl<'a> fmt::Display for EscapedStr<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for &b in self.v {
+            for e in ascii::escape_default(b) {
+                f.write_str(std::str::from_utf8(&[e]).unwrap()).unwrap();
+            }
+        }
+        Ok(())
+    }
+}
+
+pub fn escape_str(v: &[u8]) -> EscapedStr {
+    EscapedStr { v: v }
+}
+
 pub fn xor<I1: Iterator<Item=u8>, I2: Iterator<Item=u8>>(x1: I1, x2: I2) -> Vec<u8> {
     x1.zip(x2).map(|(a, b)| a ^ b).collect()
 }
@@ -250,4 +271,12 @@ pub fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8>
     }
 
     xor_crypt(ciphertext.iter().cloned(), best_key.iter().cloned())
+}
+
+pub fn pkcs7_pad(b: &[u8], blocksize: usize) -> Vec<u8> {
+    let num = blocksize - (b.len() % blocksize);
+    assert!(num < 256, "num={}", num);
+    let mut result = b.to_vec();
+    result.extend(std::iter::repeat(num as u8).take(num));
+    result
 }
