@@ -159,7 +159,7 @@ fn chardist_diff(a: &[f64; 256], b: &[f64; 256]) -> f64 {
 }
 
 pub fn corpus_chardist() -> [f64; 256] {
-    let file = BufReader::new(File::open("corpus.txt").unwrap());
+    let file = BufReader::new(File::open("inputs/corpus.txt").unwrap());
     let bytes = file.bytes().map(|r| r.unwrap());
     let filtered_bytes = bytes.filter(|&b| b != ('\n' as u8));
     chardist(filtered_bytes)

@@ -41,7 +41,7 @@ fn challenge3() {
 
 fn challenge4(corpus_cd: &[f64; 256]) {
     let mut best = SingleXorCandidate::new();
-    for line in BufReader::new(File::open("4.txt").unwrap()).lines() {
+    for line in BufReader::new(File::open("inputs/4.txt").unwrap()).lines() {
         let ciphertext = hex_decode(line.unwrap().as_bytes());
         let cracked = crack_single_xor(&ciphertext, &corpus_cd);
         if cracked.badness < best.badness {
@@ -67,7 +67,7 @@ fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
     assert_eq!(37, edit_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()));
     println!("Challenge 6: Edit distance works.");
 
-    let file = BufReader::new(File::open("6.txt").unwrap());
+    let file = BufReader::new(File::open("inputs/6.txt").unwrap());
     let bytes = file.bytes().map(|r| r.unwrap());
     let ciphertext = b64.decode(bytes);
     let cracked = crack_repeating_xor(&ciphertext, corpus_cd);
@@ -77,7 +77,7 @@ fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
 fn challenge7(b64: &Base64Codec) {
     let key = "YELLOW SUBMARINE".as_bytes();
     let ciphertext = b64.decode(
-        BufReader::new(File::open("7.txt").unwrap()).bytes().map(|r| r.unwrap()));
+        BufReader::new(File::open("inputs/7.txt").unwrap()).bytes().map(|r| r.unwrap()));
     let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key, blockmodes::PkcsPadding);
     let mut inbuf = crypto::buffer::RefReadBuffer::new(&ciphertext);
     let mut outbuf_storage = [0; 8192];
@@ -95,7 +95,7 @@ fn challenge7(b64: &Base64Codec) {
 
 fn challenge8() {
     const SIZE: usize = 16;
-    for (line_no, line) in BufReader::new(File::open("8.txt").unwrap()).lines().enumerate() {
+    for (line_no, line) in BufReader::new(File::open("inputs/8.txt").unwrap()).lines().enumerate() {
         let ciphertext = hex_decode(line.unwrap().as_bytes());
         let mut chunk_set = HashSet::new();
         for chunk in ciphertext.chunks(SIZE) {
