@@ -1,5 +1,10 @@
+extern crate crypto;
+
 use std::io::{BufReader,BufRead,Read,Write};
 use std::fs::File;
+use crypto::{aes,blockmodes};
+use crypto::buffer::{ReadBuffer,WriteBuffer};
+use crypto::symmetriccipher::Decryptor;
 
 fn hexdigit_decode(d: u8) -> u8 {
     if '0' as u8 <= d && d <= '9' as u8 {
@@ -251,14 +256,14 @@ fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
     xor_crypt(ciphertext.iter().cloned(), best_key.iter().cloned())
 }
 
-fn challenge1() {
+fn challenge1(b64: &Base64Codec) {
     let input = "49276d206b696c6c696e6720796f7572\
                  20627261696e206c696b65206120706f\
                  69736f6e6f7573206d757368726f6f6d".as_bytes();
     let expected = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBs\
                     aWtlIGEgcG9pc29ub3VzIG11c2hyb29t".as_bytes();
     let raw = hex_decode(input);
-    let b64 = Base64Codec::new().encode(&raw);
+    let b64 = b64.encode(&raw);
     // print_data(&b64);
     assert_eq!(expected, b64.as_slice());
     println!("Challenge 1: Success.");
@@ -307,23 +312,44 @@ fn challenge5() {
     println!("Challenge 5: Success.");
 }
 
-fn challenge6(corpus_cd: &[f64; 256]) {
+fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
     assert_eq!(37, edit_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()));
     println!("Challenge 6: Edit distance works.");
 
     let file = BufReader::new(File::open("6.txt").unwrap());
     let bytes = file.bytes().map(|r| r.unwrap());
-    let ciphertext = Base64Codec::new().decode(bytes);
+    let ciphertext = b64.decode(bytes);
     let cracked = crack_repeating_xor(&ciphertext, corpus_cd);
     print!("Challenge 6:\n{}", String::from_utf8_lossy(&cracked));
 }
 
+fn challenge7(b64: &Base64Codec) {
+    let key = "YELLOW SUBMARINE".as_bytes();
+    let ciphertext = b64.decode(
+        BufReader::new(File::open("7.txt").unwrap()).bytes().map(|r| r.unwrap()));
+    let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key, blockmodes::PkcsPadding);
+    let mut inbuf = crypto::buffer::RefReadBuffer::new(&ciphertext);
+    let mut outbuf_storage = [0; 8192];
+    let mut outbuf = crypto::buffer::RefWriteBuffer::new(&mut outbuf_storage);
+    let mut decrypted = Vec::new();
+    loop {
+        let result = decryptor.decrypt(&mut inbuf, &mut outbuf, true).unwrap();
+        decrypted.extend(outbuf.take_read_buffer().take_remaining());
+        if let crypto::buffer::BufferResult::BufferUnderflow = result {
+            break;
+        }
+    }
+    print!("Challenge 7:\n{}", String::from_utf8_lossy(&decrypted));
+}
+
 fn main() {
-    challenge1();
+    let b64 = Base64Codec::new();
+    let corpus_cd = corpus_chardist();
+    challenge1(&b64);
     challenge2();
     challenge3();
-    let corpus_cd = corpus_chardist();
     challenge4(&corpus_cd);
     challenge5();
-    challenge6(&corpus_cd);
+    challenge6(&b64, &corpus_cd);
+    challenge7(&b64);
 }
