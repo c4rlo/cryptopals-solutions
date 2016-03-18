@@ -15,7 +15,6 @@ fn challenge1(b64: &Base64Codec) {
                     aWtlIGEgcG9pc29ub3VzIG11c2hyb29t".as_bytes();
     let raw = hex_decode(input);
     let b64 = b64.encode(&raw);
-    // print_data(&b64);
     assert_eq!(expected, b64.as_slice());
     println!("Challenge 1: Success.");
 }
@@ -35,8 +34,7 @@ fn challenge3() {
     let input = hex_decode("1b37373331363f78151b7f2b783431333d\
                             78397828372d363c78373e783a393b3736".as_bytes());
     let cracked = crack_single_xor(&input, &corpus_chardist());
-    print!("Challenge 3: key={}; ", cracked.key_byte);
-    print_data(&cracked.decryption);
+    println!("Challenge 3: key={}; {}", cracked.key_byte, escape_bytes(&cracked.decryption));
 }
 
 fn challenge4(corpus_cd: &[f64; 256]) {
@@ -48,8 +46,7 @@ fn challenge4(corpus_cd: &[f64; 256]) {
             best = cracked;
         }
     }
-    print!("Challenge 4: ");
-    print_data(&best.decryption);
+    println!("Challenge 4: {}", escape_bytes(&best.decryption));
 }
 
 fn challenge5() {

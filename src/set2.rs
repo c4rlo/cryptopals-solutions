@@ -3,7 +3,7 @@ use common::*;
 fn challenge9() {
     let input = "YELLOW SUBMARINE".as_bytes();
     let padded = pkcs7_pad(input, 20);
-    println!("Challenge 9: {}", escape_str(&padded));
+    println!("Challenge 9: {}", escape_bytes(&padded));
 }
 
 fn challenge10(b64: &Base64Codec) {

@@ -1,7 +1,7 @@
 use std;
 use std::fmt;
 use std::ascii;
-use std::io::{BufReader,Read,Write};
+use std::io::{BufReader,Read};
 use std::fs::File;
 
 fn hexdigit_decode(d: u8) -> u8 {
@@ -125,18 +125,11 @@ impl Base64Codec {
     }
 }
 
-pub fn print_data(v: &[u8]) {
-    let stdout = std::io::stdout();
-    let mut out = stdout.lock();
-    out.write_all(v).unwrap();
-    out.write_all(&[ '\n' as u8 ]).unwrap();
-}
-
-pub struct EscapedStr<'a> {
+pub struct EscapedBytes<'a> {
     v: &'a [u8]
 }
 
-impl<'a> fmt::Display for EscapedStr<'a> {
+impl<'a> fmt::Display for EscapedBytes<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for &b in self.v {
             for e in ascii::escape_default(b) {
@@ -147,8 +140,8 @@ impl<'a> fmt::Display for EscapedStr<'a> {
     }
 }
 
-pub fn escape_str(v: &[u8]) -> EscapedStr {
-    EscapedStr { v: v }
+pub fn escape_bytes(v: &[u8]) -> EscapedBytes {
+    EscapedBytes { v: v }
 }
 
 pub fn xor<I1: Iterator<Item=u8>, I2: Iterator<Item=u8>>(x1: I1, x2: I2) -> Vec<u8> {
@@ -263,8 +256,8 @@ pub fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8>
                 &corpus_cd);
             key.push(cracked.key_byte);
         }
-        println!("  Keysize {} has badness {}, key {:?} = \"{}\"", sk.keysize, sk.badness, key,
-                 String::from_utf8_lossy(&key));
+        println!("  Keysize {} has badness {}, key \"{}\"", sk.keysize, sk.badness,
+                 escape_bytes(&key));
         if best_key.len() == 0 {
             best_key = key;
         }
