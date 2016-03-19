@@ -1,4 +1,5 @@
 extern crate crypto;
+extern crate rand;
 
 mod common;
 mod set1;

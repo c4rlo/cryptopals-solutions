@@ -172,117 +172,6 @@ pub fn xor_crypt<I1: Iterator<Item=u8>, I2: Iterator<Item=u8> + Clone>(content: 
     xor(content, key.cycle())
 }
 
-fn chardist<I: Iterator<Item=u8>>(bytes: I) -> [f64; 256] {
-    let mut counts = [0u64; 256];
-    let mut total = 0u64;
-    for b in bytes { 
-        counts[b as usize] += 1;
-        total += 1;
-    }
-    let totalf = total as f64;
-    let mut result = [0f64; 256];
-    for i in 0..256 {
-        result[i] = (counts[i] as f64) / totalf;
-    }
-    result
-}
-
-fn chardist_diff(a: &[f64; 256], b: &[f64; 256]) -> f64 {
-    a.iter().zip(b.iter()).fold(0f64, |acc, (x, y)| acc + (x - y).powi(2))
-}
-
-pub fn corpus_chardist() -> [f64; 256] {
-    let filtered_bytes = file_bytes("corpus.txt").filter(|&b| b != ('\n' as u8));
-    chardist(filtered_bytes)
-}
-
-pub struct SingleXorCandidate {
-    pub badness: f64,
-    pub key_byte: u8,
-    pub decryption: Vec<u8>
-}
-
-impl SingleXorCandidate {
-    pub fn new() -> Self {
-        SingleXorCandidate {
-            badness: std::f64::INFINITY,
-            key_byte: 0u8,
-            decryption: Vec::new()
-        }
-    }
-}
-
-pub fn crack_single_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> SingleXorCandidate {
-    let mut best = SingleXorCandidate::new();
-    for i in 0..256 {
-        let key_byte = i as u8;
-        let decryption = xor(ciphertext.iter().cloned(), std::iter::repeat(key_byte));
-        let badness = chardist_diff(&chardist(decryption.iter().cloned()), &corpus_cd);
-        if badness < best.badness {
-            best = SingleXorCandidate {
-                badness: badness, key_byte: key_byte, decryption: decryption };
-        }
-    }
-    best
-}
-
-pub fn edit_distance(a: &[u8], b: &[u8]) -> usize {
-    // We want to write the below, but as of Rust 1.7, the 'sum()' method is unstable
-    // a.iter().zip(b.iter()).map(|(&x, &y)| (x ^ y).count_ones()).sum::<u32>() as usize
-
-    let mut result = 0usize;
-    for n in a.iter().zip(b.iter()).map(|(&x, &y)| (x ^ y).count_ones()) {
-        result += n as usize;
-    }
-    result
-}
-
-pub fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
-    struct ScoredKeysize {
-        keysize: usize,
-        badness: f64
-    }
-
-    let mut scored_keysizes = Vec::new();
-
-    for keysize in 2..41 {
-        let mut ed_sum = 0f64;
-        const N: usize = 10;
-        for i in 0..N {
-            let chunk1 = &ciphertext[(keysize*i) .. (keysize*(i+1))];
-            let chunk2 = &ciphertext[(keysize*(i+1)) .. (keysize*(i+2))];
-            ed_sum += edit_distance(chunk1, chunk2) as f64;
-        }
-        scored_keysizes.push(ScoredKeysize {
-            keysize: keysize,
-            badness: ed_sum / N as f64 / keysize as f64 });
-    }
-
-    scored_keysizes.sort_by(|a, b| a.badness.partial_cmp(&b.badness).unwrap());
-
-    let mut best_key = Vec::new();
-
-    for sk in scored_keysizes.iter().take(5) {
-        let keysize = sk.keysize;
-        let mut key = Vec::new();
-        for i in 0..keysize {
-            let cracked = crack_single_xor(
-                ciphertext.iter().enumerate().filter_map(
-                    |(j, c)| if j % sk.keysize == i { Some(*c) } else { None })
-                .collect::<Vec<u8>>().as_slice(),
-                &corpus_cd);
-            key.push(cracked.key_byte);
-        }
-        println!("  Keysize {} has badness {}, key \"{}\"", sk.keysize, sk.badness,
-                 escape_bytes(&key));
-        if best_key.len() == 0 {
-            best_key = key;
-        }
-    }
-
-    xor_crypt(ciphertext.iter().cloned(), best_key.iter().cloned())
-}
-
 pub fn pkcs7_pad(b: &[u8], blocksize: usize) -> Vec<u8> {
     let num = blocksize - (b.len() % blocksize);
     assert!(num < 256, "num={}", num);
@@ -313,11 +202,43 @@ fn aes128_block_decrypt(ciphertext: &[u8], key: &[u8]) -> [u8; 16] {
     result
 }
 
+pub fn aes128_ecb_encrypt(plaintext: &[u8], key: &[u8]) -> Vec<u8> {
+    let mut result = Vec::new();
+    for block in pkcs7_pad(plaintext, 16).as_slice().chunks(16) {
+        result.extend(&aes128_block_encrypt(block, key));
+    }
+    result
+}
+
+#[allow(dead_code)]
+pub fn aes128_ecb_decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
+    let mut result = Vec::new();
+    for block in ciphertext.chunks(16) {
+        result.extend(&aes128_block_decrypt(block, key));
+    }
+    pkcs7_unpad(&mut result);
+    result
+}
+
+pub fn aes128_cbc_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8; 16]) -> Vec<u8> {
+    let mut x = *iv;
+    let mut result = Vec::new();
+    for plainblock in pkcs7_pad(plaintext, 16).chunks(16) {
+        x = aes128_block_encrypt(
+            xor(plainblock.iter().cloned(), x.iter().cloned()).as_slice(),
+            key);
+        result.extend(&x);
+    }
+    result
+}
+
 pub fn aes128_cbc_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8; 16]) -> Vec<u8> {
     let mut x: &[u8] = iv;
     let mut result = Vec::new();
     for cipherblock in ciphertext.chunks(16) {
-        result.extend(aes128_block_decrypt(cipherblock, key).iter().zip(x).map(|(a,b)| a^b));
+        result.extend(xor(
+                aes128_block_decrypt(cipherblock, key).iter().cloned(),
+                x.iter().cloned()));
         x = cipherblock;
     }
     pkcs7_unpad(&mut result);
