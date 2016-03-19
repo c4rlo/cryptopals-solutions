@@ -1,7 +1,7 @@
 use std;
 use std::fmt;
 use std::ascii;
-use std::io::{BufReader,Read};
+use std::io::{BufReader,BufRead,Read};
 use std::fs::File;
 
 fn hexdigit_decode(d: u8) -> u8 {
@@ -144,6 +144,23 @@ pub fn escape_bytes(v: &[u8]) -> EscapedBytes {
     EscapedBytes { v: v }
 }
 
+fn open_file_buf(filename: &str) -> BufReader<File> {
+    BufReader::new(File::open("inputs/".to_owned() + filename).unwrap())
+}
+
+pub type FileBytes =
+        std::iter::Map<std::io::Bytes<BufReader<File>>, fn(std::io::Result<u8>) -> u8>;
+
+pub fn file_bytes(filename: &str) -> FileBytes {
+    open_file_buf(filename).bytes().map(std::io::Result::unwrap)
+}
+
+pub type FileLines = std::io::Lines<BufReader<File>>;
+
+pub fn file_lines(filename: &str) -> FileLines {
+    open_file_buf(filename).lines()
+}
+
 pub fn xor<I1: Iterator<Item=u8>, I2: Iterator<Item=u8>>(x1: I1, x2: I2) -> Vec<u8> {
     x1.zip(x2).map(|(a, b)| a ^ b).collect()
 }
@@ -173,9 +190,7 @@ fn chardist_diff(a: &[f64; 256], b: &[f64; 256]) -> f64 {
 }
 
 pub fn corpus_chardist() -> [f64; 256] {
-    let file = BufReader::new(File::open("inputs/corpus.txt").unwrap());
-    let bytes = file.bytes().map(|r| r.unwrap());
-    let filtered_bytes = bytes.filter(|&b| b != ('\n' as u8));
+    let filtered_bytes = file_bytes("corpus.txt").filter(|&b| b != ('\n' as u8));
     chardist(filtered_bytes)
 }
 

@@ -1,6 +1,4 @@
 use std::collections::HashSet;
-use std::io::{BufReader,BufRead,Read};
-use std::fs::File;
 use crypto;
 use crypto::{aes,blockmodes};
 use crypto::buffer::{ReadBuffer,WriteBuffer};
@@ -39,7 +37,7 @@ fn challenge3() {
 
 fn challenge4(corpus_cd: &[f64; 256]) {
     let mut best = SingleXorCandidate::new();
-    for line in BufReader::new(File::open("inputs/4.txt").unwrap()).lines() {
+    for line in file_lines("4.txt") {
         let ciphertext = hex_decode(line.unwrap().as_bytes());
         let cracked = crack_single_xor(&ciphertext, &corpus_cd);
         if cracked.badness < best.badness {
@@ -64,8 +62,7 @@ fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
     assert_eq!(37, edit_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()));
     println!("Challenge 6: Edit distance works.");
 
-    let file = BufReader::new(File::open("inputs/6.txt").unwrap());
-    let bytes = file.bytes().map(|r| r.unwrap());
+    let bytes = file_bytes("6.txt");
     let ciphertext = b64.decode(bytes);
     let cracked = crack_repeating_xor(&ciphertext, corpus_cd);
     print!("Challenge 6:\n{}", String::from_utf8_lossy(&cracked));
@@ -73,8 +70,7 @@ fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
 
 fn challenge7(b64: &Base64Codec) {
     let key = "YELLOW SUBMARINE".as_bytes();
-    let ciphertext = b64.decode(
-        BufReader::new(File::open("inputs/7.txt").unwrap()).bytes().map(|r| r.unwrap()));
+    let ciphertext = b64.decode(file_bytes("7.txt"));
     let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key, blockmodes::PkcsPadding);
     let mut inbuf = crypto::buffer::RefReadBuffer::new(&ciphertext);
     let mut outbuf_storage = [0; 8192];
@@ -92,7 +88,7 @@ fn challenge7(b64: &Base64Codec) {
 
 fn challenge8() {
     const SIZE: usize = 16;
-    for (line_no, line) in BufReader::new(File::open("inputs/8.txt").unwrap()).lines().enumerate() {
+    for (line_no, line) in file_lines("8.txt").enumerate() {
         let ciphertext = hex_decode(line.unwrap().as_bytes());
         let mut chunk_set = HashSet::new();
         for chunk in ciphertext.chunks(SIZE) {
