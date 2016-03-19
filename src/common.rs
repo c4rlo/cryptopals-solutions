@@ -3,6 +3,8 @@ use std::fmt;
 use std::ascii;
 use std::io::{BufReader,BufRead,Read};
 use std::fs::File;
+use crypto::aessafe;
+use crypto::symmetriccipher::{BlockEncryptor,BlockDecryptor};
 
 fn hexdigit_decode(d: u8) -> u8 {
     if '0' as u8 <= d && d <= '9' as u8 {
@@ -286,5 +288,38 @@ pub fn pkcs7_pad(b: &[u8], blocksize: usize) -> Vec<u8> {
     assert!(num < 256, "num={}", num);
     let mut result = b.to_vec();
     result.extend(std::iter::repeat(num as u8).take(num));
+    result
+}
+
+pub fn pkcs7_unpad(b: &mut Vec<u8>) {
+    if let Some(&last) = b.last() {
+        let len = b.len();
+        b.truncate(len - last as usize);
+    }
+}
+
+#[allow(dead_code)]
+fn aes128_block_encrypt(plaintext: &[u8], key: &[u8]) -> [u8; 16] {
+    let encryptor = aessafe::AesSafe128Encryptor::new(key);
+    let mut result = [0; 16];
+    encryptor.encrypt_block(plaintext, &mut result);
+    result
+}
+
+fn aes128_block_decrypt(ciphertext: &[u8], key: &[u8]) -> [u8; 16] {
+    let decryptor = aessafe::AesSafe128Decryptor::new(key);
+    let mut result = [0; 16];
+    decryptor.decrypt_block(ciphertext, &mut result);
+    result
+}
+
+pub fn aes128_cbc_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8; 16]) -> Vec<u8> {
+    let mut x: &[u8] = iv;
+    let mut result = Vec::new();
+    for cipherblock in ciphertext.chunks(16) {
+        result.extend(aes128_block_decrypt(cipherblock, key).iter().zip(x).map(|(a,b)| a^b));
+        x = cipherblock;
+    }
+    pkcs7_unpad(&mut result);
     result
 }
