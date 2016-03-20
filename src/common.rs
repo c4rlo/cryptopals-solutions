@@ -19,9 +19,12 @@ fn hexdigit_decode(d: u8) -> u8 {
 }
 
 pub fn hex_decode(h: &[u8]) -> Vec<u8> {
-    // We want to write the below, but as of Rust 1.7, slice pattern syntax is unstable.
-    // h.chunks(2).map(|[a, b]| 16 * hexdigit_decode(a) + hexdigit_decode(b)).collect()
-    h.chunks(2).map(|pair| 16 * hexdigit_decode(pair[0]) + hexdigit_decode(pair[1])).collect()
+    // We want to write the below, but as of Rust 1.7, slice pattern syntax is
+    // unstable.  h.chunks(2).map(|[a, b]| 16 * hexdigit_decode(a) +
+    // hexdigit_decode(b)).collect()
+    h.chunks(2).map(
+        |pair| 16 * hexdigit_decode(pair[0]) + hexdigit_decode(pair[1]))
+        .collect()
 }
 
 pub struct IterChunker<I: Iterator> {
@@ -90,7 +93,8 @@ impl Base64Codec {
             let t1 = if len >= 2 { triple[1] } else { 0u8 };
             let t2 = if len >= 3 { triple[2] } else { 0u8 };
             result.push(self.enc_map[(t0 >> 2) as usize]);
-            result.push(self.enc_map[(((t0 & 0x03u8) << 4) | (t1 >> 4)) as usize]);
+            result.push(self.enc_map[
+                        (((t0 & 0x03u8) << 4) | (t1 >> 4)) as usize]);
             result.push(
                 if len >= 2 {
                     self.enc_map[(((t1 & 0x0fu8) << 2) | (t2 >> 6)) as usize]
@@ -151,7 +155,8 @@ fn open_file_buf(filename: &str) -> BufReader<File> {
 }
 
 pub type FileBytes =
-        std::iter::Map<std::io::Bytes<BufReader<File>>, fn(std::io::Result<u8>) -> u8>;
+        std::iter::Map<std::io::Bytes<BufReader<File>>, fn(std::io::Result<u8>)
+                                                            -> u8>;
 
 pub fn file_bytes(filename: &str) -> FileBytes {
     open_file_buf(filename).bytes().map(std::io::Result::unwrap)
@@ -163,12 +168,13 @@ pub fn file_lines(filename: &str) -> FileLines {
     open_file_buf(filename).lines()
 }
 
-pub fn xor<I1: Iterator<Item=u8>, I2: Iterator<Item=u8>>(x1: I1, x2: I2) -> Vec<u8> {
+pub fn xor<I1: Iterator<Item=u8>, I2: Iterator<Item=u8>>(x1: I1, x2: I2)
+            -> Vec<u8> {
     x1.zip(x2).map(|(a, b)| a ^ b).collect()
 }
 
-pub fn xor_crypt<I1: Iterator<Item=u8>, I2: Iterator<Item=u8> + Clone>(content: I1, key: I2)
-            -> Vec<u8> {
+pub fn xor_crypt<I1: Iterator<Item=u8>, I2: Iterator<Item=u8> + Clone>(
+            content: I1, key: I2) -> Vec<u8> {
     xor(content, key.cycle())
 }
 
@@ -220,7 +226,8 @@ pub fn aes128_ecb_decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     result
 }
 
-pub fn aes128_cbc_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8; 16]) -> Vec<u8> {
+pub fn aes128_cbc_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8; 16])
+            -> Vec<u8> {
     let mut x = *iv;
     let mut result = Vec::new();
     for plainblock in pkcs7_pad(plaintext, 16).chunks(16) {
@@ -232,7 +239,8 @@ pub fn aes128_cbc_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8; 16]) -> Vec<u8
     result
 }
 
-pub fn aes128_cbc_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8; 16]) -> Vec<u8> {
+pub fn aes128_cbc_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8; 16])
+            -> Vec<u8> {
     let mut x: &[u8] = iv;
     let mut result = Vec::new();
     for cipherblock in ciphertext.chunks(16) {

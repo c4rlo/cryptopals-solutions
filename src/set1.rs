@@ -26,7 +26,8 @@ fn chardist_diff(a: &[f64; 256], b: &[f64; 256]) -> f64 {
 }
 
 fn corpus_chardist() -> [f64; 256] {
-    let filtered_bytes = file_bytes("corpus.txt").filter(|&b| b != ('\n' as u8));
+    let filtered_bytes = file_bytes("corpus.txt").filter(
+        |&b| b != ('\n' as u8));
     chardist(filtered_bytes)
 }
 
@@ -46,12 +47,15 @@ impl SingleXorCandidate {
     }
 }
 
-fn crack_single_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> SingleXorCandidate {
+fn crack_single_xor(ciphertext: &[u8], corpus_cd: &[f64; 256])
+            -> SingleXorCandidate {
     let mut best = SingleXorCandidate::new();
     for i in 0..256 {
         let key_byte = i as u8;
-        let decryption = xor(ciphertext.iter().cloned(), std::iter::repeat(key_byte));
-        let badness = chardist_diff(&chardist(decryption.iter().cloned()), &corpus_cd);
+        let decryption = xor(ciphertext.iter().cloned(),
+                    std::iter::repeat(key_byte));
+        let badness = chardist_diff(&chardist(decryption.iter().cloned()),
+                    &corpus_cd);
         if badness < best.badness {
             best = SingleXorCandidate {
                 badness: badness, key_byte: key_byte, decryption: decryption };
@@ -61,8 +65,10 @@ fn crack_single_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> SingleXorCandi
 }
 
 fn edit_distance(a: &[u8], b: &[u8]) -> usize {
-    // We want to write the below, but as of Rust 1.7, the 'sum()' method is unstable
-    // a.iter().zip(b.iter()).map(|(&x, &y)| (x ^ y).count_ones()).sum::<u32>() as usize
+    // We want to write the below, but as of Rust 1.7, the 'sum()' method is
+    // unstable
+    // a.iter().zip(b.iter()).map(|(&x, &y)| (x ^ y).count_ones()).sum::<u32>()
+    //     as usize
 
     let mut result = 0usize;
     for n in a.iter().zip(b.iter()).map(|(&x, &y)| (x ^ y).count_ones()) {
@@ -107,8 +113,8 @@ fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
                 &corpus_cd);
             key.push(cracked.key_byte);
         }
-        println!("  Keysize {} has badness {}, key \"{}\"", sk.keysize, sk.badness,
-                 escape_bytes(&key));
+        println!("  Keysize {} has badness {}, key \"{}\"", sk.keysize,
+                 sk.badness, escape_bytes(&key));
         if best_key.len() == 0 {
             best_key = key;
         }
@@ -144,7 +150,8 @@ fn challenge3() {
     let input = hex_decode("1b37373331363f78151b7f2b783431333d\
                             78397828372d363c78373e783a393b3736".as_bytes());
     let cracked = crack_single_xor(&input, &corpus_chardist());
-    println!("Challenge 3: key={}; {}", cracked.key_byte, escape_bytes(&cracked.decryption));
+    println!("Challenge 3: key={}; {}", cracked.key_byte,
+             escape_bytes(&cracked.decryption));
 }
 
 fn challenge4(corpus_cd: &[f64; 256]) {
@@ -162,16 +169,20 @@ fn challenge4(corpus_cd: &[f64; 256]) {
 fn challenge5() {
     let input = "Burning 'em, if you ain't quick and nimble\n\
                  I go crazy when I hear a cymbal".as_bytes();
-    let expected = hex_decode("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a262263\
-                               24272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b2028\
+    let expected = hex_decode("0b3637272a2b2e63622c2e69692a2369\
+                               3a2a3c6324202d623d63343c2a262263\
+                               24272765272a282b2f20430a652e2c65\
+                               2a3124333a653e2b2027630c692b2028\
                                3165286326302e27282f".as_bytes());
-    let output = xor_crypt(input.iter().cloned(), "ICE".as_bytes().iter().cloned());
+    let output = xor_crypt(input.iter().cloned(),
+                "ICE".as_bytes().iter().cloned());
     assert_eq!(expected, output);
     println!("Challenge 5: Success.");
 }
 
 fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
-    assert_eq!(37, edit_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()));
+    assert_eq!(37, edit_distance("this is a test".as_bytes(),
+                        "wokka wokka!!!".as_bytes()));
     println!("Challenge 6: Edit distance works.");
 
     let bytes = file_bytes("6.txt");
@@ -183,7 +194,8 @@ fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
 fn challenge7(b64: &Base64Codec) {
     let key = "YELLOW SUBMARINE".as_bytes();
     let ciphertext = b64.decode(file_bytes("7.txt"));
-    let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key, blockmodes::PkcsPadding);
+    let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key,
+                                           blockmodes::PkcsPadding);
     let mut inbuf = crypto::buffer::RefReadBuffer::new(&ciphertext);
     let mut outbuf_storage = [0; 8192];
     let mut outbuf = crypto::buffer::RefWriteBuffer::new(&mut outbuf_storage);

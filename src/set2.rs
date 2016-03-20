@@ -10,7 +10,8 @@ struct EncryptionOracleDisclosure {
     is_ecb: bool
 }
 
-fn disclosing_encryption_oracle(plaintext: &[u8]) -> EncryptionOracleDisclosure {
+fn disclosing_encryption_oracle(plaintext: &[u8])
+        -> EncryptionOracleDisclosure {
     let mut rng = rand::thread_rng();
     let mut input = Vec::new();
     let between = Range::new(5, 11);
