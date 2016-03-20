@@ -66,6 +66,8 @@ const BASE64CHARS: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                    abcdefghijklmnopqrstuvwxyz\
                                    0123456789+/";
 
+const BASE64BAD: u8 = 128;
+
 pub struct Base64Codec {
     enc_map: &'static [u8],
     dec_map: Vec<u8>
@@ -75,7 +77,7 @@ impl Base64Codec {
     pub fn new() -> Self {
         let base64bytes = BASE64CHARS.as_bytes();
         let mut dec_map = Vec::new();
-        dec_map.resize(256, 0u8);
+        dec_map.resize(256, BASE64BAD);
         for (i, b) in base64bytes.iter().enumerate() {
             dec_map[*b as usize] = i as u8;
         }
@@ -111,14 +113,21 @@ impl Base64Codec {
         result
     }
 
+    fn decode_lookup(&self, idx: u8) -> u8 {
+        let result = self.dec_map[idx as usize];
+        assert!(result != BASE64BAD);
+        result
+    }
+
     pub fn decode<I: Iterator<Item=u8>>(&self, b: I) -> Vec<u8> {
         let mut result = Vec::new();
         for quad in b.filter(|&b| b != ('\n' as u8)).chunks(4) {
-            let len = quad.iter().cloned().take_while(|&b| b != ('=' as u8)).count();
-            let q0 = self.dec_map[quad[0] as usize];
-            let q1 = self.dec_map[quad[1] as usize];
-            let q2 = if len >= 3 { self.dec_map[quad[2] as usize] } else { 0u8 };
-            let q3 = if len >= 4 { self.dec_map[quad[3] as usize] } else { 0u8 };
+            let len = quad.iter().cloned().take_while(
+                |&b| b != ('=' as u8)).count();
+            let q0 = self.decode_lookup(quad[0]);
+            let q1 = self.decode_lookup(quad[1]);
+            let q2 = if len >= 3 { self.decode_lookup(quad[2]) } else { 0u8 };
+            let q3 = if len >= 4 { self.decode_lookup(quad[3]) } else { 0u8 };
             result.push((q0 << 2) | (q1 >> 4));
             if len >= 3 {
                 result.push((q1 << 4) | (q2 >> 2));
