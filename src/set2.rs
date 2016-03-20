@@ -1,4 +1,4 @@
-use std;
+use std::iter;
 use std::collections::HashSet;
 use rand;
 use rand::Rng;
@@ -36,10 +36,27 @@ fn disclosing_encryption_oracle(plaintext: &[u8])
     }
 }
 
-fn is_ecb<F: FnMut(&[u8]) -> Vec<u8>>(mut oracle: F) -> bool {
+fn oracle_with_key(prefix: &[u8], key: &[u8], b64: &Base64Codec) -> Vec<u8> {
+    let secret_b64 =
+            "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg\
+             aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq\
+             dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg\
+             YnkK".as_bytes();
+    //panic!("secret len = {}", b64.decode(secret_b64.iter().cloned()).len());
+    let mut plaintext = prefix.to_vec();
+    plaintext.append(&mut b64.decode(secret_b64.iter().cloned()));
+    aes128_ecb_encrypt(&plaintext, key)
+}
+
+fn make_oracle<'a>(b64: &'a Base64Codec) -> Box<FnMut(&[u8]) -> Vec<u8> + 'a> {
+    let key: [u8; 16] = rand::random();
+    Box::new(move |prefix| oracle_with_key(prefix, &key, &b64))
+}
+
+fn is_ecb(oracle: &mut FnMut(&[u8]) -> Vec<u8>) -> bool {
     const BLOCKSIZE: usize = 16;
     let ciphertext = oracle(
-        std::iter::repeat(0).take(3*BLOCKSIZE-1).collect::<Vec<u8>>().as_slice());
+        iter::repeat(0).take(3*BLOCKSIZE-1).collect::<Vec<u8>>().as_slice());
     let mut blocks = HashSet::new();
     for block in ciphertext.chunks(BLOCKSIZE) {
         if ! blocks.insert(block) {
@@ -47,6 +64,43 @@ fn is_ecb<F: FnMut(&[u8]) -> Vec<u8>>(mut oracle: F) -> bool {
         }
     }
     false
+}
+
+fn crack_ecb_oracle(oracle: &mut FnMut(&[u8]) -> Vec<u8>,
+                    blocksize: usize,
+                    num_blocks: usize,
+                    plainsize: usize) -> Vec<u8> {
+    let mut plaintext = Vec::new();
+    for blk_idx in 0..(num_blocks) {
+        let mut pre = vec![0; blocksize];
+        let mut blk_guess =
+                if blk_idx == 0 { pre.clone() }
+                else { plaintext[blocksize*(blk_idx-1)..].to_vec() };
+        for i in 1..(blocksize+1) {
+            pre.pop();
+            let ciphertext = oracle(&pre);
+            let block_i = &ciphertext[
+                                    blocksize*blk_idx .. blocksize*(blk_idx+1)];
+            blk_guess.remove(0);
+            blk_guess.push(0);
+            assert_eq!(blocksize, blk_guess.len());
+            for b in 0..256 {
+                let byte = b as u8;
+                blk_guess[blocksize-1] = byte;
+                let candidate = &oracle(&blk_guess)[0..blocksize];
+                if candidate == block_i {
+                    plaintext.push(byte);
+                    break;
+                }
+            }
+            if plaintext.len() == plainsize {
+                return plaintext;
+            }
+            assert_eq!(blocksize*blk_idx + i, plaintext.len());
+        }
+        assert!(pre.is_empty());
+    }
+    unreachable!();
 }
 
 fn challenge9() {
@@ -66,7 +120,7 @@ fn challenge10(b64: &Base64Codec) {
 fn challenge11() {
     for _ in 1..500 {
         let mut is_ecb_really = false;
-        let is_ecb_guess = is_ecb(|plaintext| {
+        let is_ecb_guess = is_ecb(&mut |plaintext| {
             let disc = disclosing_encryption_oracle(plaintext);
             is_ecb_really = disc.is_ecb;
             disc.ciphertext
@@ -76,10 +130,51 @@ fn challenge11() {
     println!("Challenge 11: Success");
 }
 
+fn challenge12(b64: &Base64Codec) {
+    let mut oracle = make_oracle(b64);
+
+    let blocksize;
+    let plainsize;
+    let size1 = oracle(&[]).len();
+    println!("Challenge 12: size1 = {}", size1);
+    let mut prefix = Vec::new();
+    loop {
+        prefix.push(0);
+        let size2 = oracle(&prefix).len();
+        if size2 > size1 {
+            blocksize = size2 - size1;
+            plainsize = if prefix.len() > 1 { size1 - prefix.len() }
+                        else                { size1 };
+            break;
+        }
+    }
+
+    println!("Challenge 12: Blocksize is {}, Plainsize is {}", blocksize,
+             plainsize);
+
+    {
+        let oracle_ref = oracle.as_mut();
+        // Not sure why the above and the extra scope here is necessary, but it
+        // is (Rust 1.7.0).
+
+        let is_ecb = is_ecb(oracle_ref);
+
+        println!("Challenge 12: is_ecb is {}", is_ecb);
+
+        let num_blocks = size1 / blocksize;
+
+        let plaintext = crack_ecb_oracle(oracle_ref, blocksize, num_blocks,
+                                         plainsize);
+
+        println!("Challenge 12:\n{}", String::from_utf8_lossy(&plaintext));
+    }
+}
+
 pub fn run() {
     println!("=== SET 2 ===");
     let b64 = Base64Codec::new();
     challenge9();
     challenge10(&b64);
     challenge11();
+    challenge12(&b64);
 }
