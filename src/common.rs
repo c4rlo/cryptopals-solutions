@@ -19,9 +19,10 @@ fn hexdigit_decode(d: u8) -> u8 {
 }
 
 pub fn hex_decode(h: &[u8]) -> Vec<u8> {
-    // We want to write the below, but as of Rust 1.7, slice pattern syntax is
-    // unstable.  h.chunks(2).map(|[a, b]| 16 * hexdigit_decode(a) +
-    // hexdigit_decode(b)).collect()
+    // We want to write the below, but as of Rust 1.8, slice pattern syntax is
+    // unstable.
+    // h.chunks(2).map(|[a, b]| 16 * hexdigit_decode(a) +
+    //                          hexdigit_decode(b)).collect()
     h.chunks(2).map(
         |pair| 16 * hexdigit_decode(pair[0]) + hexdigit_decode(pair[1]))
         .collect()

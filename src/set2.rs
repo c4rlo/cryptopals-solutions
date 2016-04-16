@@ -162,22 +162,16 @@ fn challenge12(b64: &Base64Codec) {
     println!("Challenge 12: Blocksize is {}, Plainsize is {}", blocksize,
              plainsize);
 
-    {
-        let oracle_ref = oracle.as_mut();
-        // Not sure why the above and the extra scope here is necessary, but it
-        // is (Rust 1.7.0).
+    let is_ecb = is_ecb(&mut *oracle);
 
-        let is_ecb = is_ecb(oracle_ref);
+    println!("Challenge 12: is_ecb is {}", is_ecb);
 
-        println!("Challenge 12: is_ecb is {}", is_ecb);
+    let num_blocks = size1 / blocksize;
 
-        let num_blocks = size1 / blocksize;
+    let plaintext = crack_ecb_oracle(&mut *oracle, blocksize, num_blocks,
+                                     plainsize);
 
-        let plaintext = crack_ecb_oracle(oracle_ref, blocksize, num_blocks,
-                                         plainsize);
-
-        println!("Challenge 12:\n{}", String::from_utf8_lossy(&plaintext));
-    }
+    println!("Challenge 12:\n{}", String::from_utf8_lossy(&plaintext));
 }
 
 fn challenge13() {
