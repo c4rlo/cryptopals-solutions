@@ -1,5 +1,5 @@
 use std::iter;
-use std::collections::HashSet;
+use std::collections::{HashMap,HashSet};
 use rand;
 use rand::Rng;
 use rand::distributions::{IndependentSample,Range};
@@ -103,6 +103,16 @@ fn crack_ecb_oracle(oracle: &mut FnMut(&[u8]) -> Vec<u8>,
     unreachable!();
 }
 
+fn cookie_parse(s: &[u8]) -> HashMap<Vec<u8>, Vec<u8>> {
+    let mut result = HashMap::new();
+    for chunk in s.split(|&b| b == ('&' as u8)) {
+        if let Some(idx) = chunk.iter().position(|&b| b == ('=' as u8)) {
+            result.insert(chunk[0 .. idx].to_vec(), chunk[(idx+1) ..].to_vec());
+        }
+    }
+    result
+}
+
 fn challenge9() {
     let input = "YELLOW SUBMARINE".as_bytes();
     let padded = pkcs7_pad(input, 20);
@@ -170,6 +180,23 @@ fn challenge12(b64: &Base64Codec) {
     }
 }
 
+fn challenge13() {
+    let m1 = cookie_parse(b"foo=bar&baz=qux&zap=zazzle");
+    let mut e1 = HashMap::new();
+    e1.insert(b"foo".to_vec(), b"bar".to_vec());
+    e1.insert(b"baz".to_vec(), b"qux".to_vec());
+    e1.insert(b"zap".to_vec(), b"zazzle".to_vec());
+    assert_eq!(e1, m1);
+
+    let m2 = cookie_parse(b"this=that&whatever&such=");
+    let mut e2 = HashMap::new();
+    e2.insert(b"this".to_vec(), b"that".to_vec());
+    e2.insert(b"such".to_vec(), b"".to_vec());
+    assert_eq!(e2, m2);
+
+    println!("Challenge 13: Success (so far)");
+}
+
 pub fn run() {
     println!("=== SET 2 ===");
     let b64 = Base64Codec::new();
@@ -177,4 +204,5 @@ pub fn run() {
     challenge10(&b64);
     challenge11();
     challenge12(&b64);
+    challenge13();
 }
