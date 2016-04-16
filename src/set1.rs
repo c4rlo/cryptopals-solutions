@@ -124,21 +124,21 @@ fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
 }
 
 fn challenge1(b64: &Base64Codec) {
-    let input = "49276d206b696c6c696e6720796f7572\
-                 20627261696e206c696b65206120706f\
-                 69736f6e6f7573206d757368726f6f6d".as_bytes();
-    let expected = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBs\
-                    aWtlIGEgcG9pc29ub3VzIG11c2hyb29t".as_bytes();
+    let input = b"49276d206b696c6c696e6720796f7572\
+                  20627261696e206c696b65206120706f\
+                  69736f6e6f7573206d757368726f6f6d";
+    let expected = b"SSdtIGtpbGxpbmcgeW91ciBicmFpbiBs\
+                     aWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
     let raw = hex_decode(input);
     let b64 = b64.encode(&raw);
-    assert_eq!(expected, b64.as_slice());
+    assert_eq!(expected.as_ref(), b64.as_slice());
     println!("Challenge 1: Success.");
 }
 
 fn challenge2() {
-    let input1 = "1c0111001f010100061a024b53535009181c".as_bytes();
-    let input2 = "686974207468652062756c6c277320657965".as_bytes();
-    let expected = "746865206b696420646f6e277420706c6179".as_bytes();
+    let input1 = b"1c0111001f010100061a024b53535009181c";
+    let input2 = b"686974207468652062756c6c277320657965";
+    let expected = b"746865206b696420646f6e277420706c6179";
     let result = xor(
         hex_decode(input1).iter().cloned(),
         hex_decode(input2).iter().cloned());
@@ -147,8 +147,8 @@ fn challenge2() {
 }
 
 fn challenge3() {
-    let input = hex_decode("1b37373331363f78151b7f2b783431333d\
-                            78397828372d363c78373e783a393b3736".as_bytes());
+    let input = hex_decode(b"1b37373331363f78151b7f2b783431333d\
+                             78397828372d363c78373e783a393b3736");
     let cracked = crack_single_xor(&input, &corpus_chardist());
     println!("Challenge 3: key={}; {}", cracked.key_byte,
              escape_bytes(&cracked.decryption));
@@ -167,22 +167,20 @@ fn challenge4(corpus_cd: &[f64; 256]) {
 }
 
 fn challenge5() {
-    let input = "Burning 'em, if you ain't quick and nimble\n\
-                 I go crazy when I hear a cymbal".as_bytes();
-    let expected = hex_decode("0b3637272a2b2e63622c2e69692a2369\
-                               3a2a3c6324202d623d63343c2a262263\
-                               24272765272a282b2f20430a652e2c65\
-                               2a3124333a653e2b2027630c692b2028\
-                               3165286326302e27282f".as_bytes());
-    let output = xor_crypt(input.iter().cloned(),
-                "ICE".as_bytes().iter().cloned());
+    let input = b"Burning 'em, if you ain't quick and nimble\n\
+                  I go crazy when I hear a cymbal";
+    let expected = hex_decode(b"0b3637272a2b2e63622c2e69692a2369\
+                                3a2a3c6324202d623d63343c2a262263\
+                                24272765272a282b2f20430a652e2c65\
+                                2a3124333a653e2b2027630c692b2028\
+                                3165286326302e27282f");
+    let output = xor_crypt(input.iter().cloned(), b"ICE".iter().cloned());
     assert_eq!(expected, output);
     println!("Challenge 5: Success.");
 }
 
 fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
-    assert_eq!(37, edit_distance("this is a test".as_bytes(),
-                        "wokka wokka!!!".as_bytes()));
+    assert_eq!(37, edit_distance(b"this is a test", b"wokka wokka!!!"));
     println!("Challenge 6: Edit distance works.");
 
     let bytes = file_bytes("6.txt");
@@ -192,7 +190,7 @@ fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
 }
 
 fn challenge7(b64: &Base64Codec) {
-    let key = "YELLOW SUBMARINE".as_bytes();
+    let key = b"YELLOW SUBMARINE";
     let ciphertext = b64.decode(file_bytes("7.txt"));
     let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key,
                                            blockmodes::PkcsPadding);

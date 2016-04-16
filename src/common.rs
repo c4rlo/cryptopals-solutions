@@ -62,29 +62,24 @@ impl<I: Iterator> Chunkable<I> for I {
     }
 }
 
-const BASE64CHARS: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                                   abcdefghijklmnopqrstuvwxyz\
-                                   0123456789+/";
+const BASE64BYTES: &'static [u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                     abcdefghijklmnopqrstuvwxyz\
+                                     0123456789+/";
 
 const BASE64BAD: u8 = 128;
 
 pub struct Base64Codec {
-    enc_map: &'static [u8],
     dec_map: Vec<u8>
 }
 
 impl Base64Codec {
     pub fn new() -> Self {
-        let base64bytes = BASE64CHARS.as_bytes();
         let mut dec_map = Vec::new();
         dec_map.resize(256, BASE64BAD);
-        for (i, b) in base64bytes.iter().enumerate() {
+        for (i, b) in BASE64BYTES.iter().enumerate() {
             dec_map[*b as usize] = i as u8;
         }
-        Base64Codec {
-            enc_map: base64bytes,
-            dec_map: dec_map
-        }
+        Base64Codec { dec_map: dec_map }
     }
 
     pub fn encode(&self, b: &[u8]) -> Vec<u8> {
@@ -94,18 +89,18 @@ impl Base64Codec {
             let t0 = triple[0];
             let t1 = if len >= 2 { triple[1] } else { 0u8 };
             let t2 = if len >= 3 { triple[2] } else { 0u8 };
-            result.push(self.enc_map[(t0 >> 2) as usize]);
-            result.push(self.enc_map[
+            result.push(BASE64BYTES[(t0 >> 2) as usize]);
+            result.push(BASE64BYTES[
                         (((t0 & 0x03u8) << 4) | (t1 >> 4)) as usize]);
             result.push(
                 if len >= 2 {
-                    self.enc_map[(((t1 & 0x0fu8) << 2) | (t2 >> 6)) as usize]
+                    BASE64BYTES[(((t1 & 0x0fu8) << 2) | (t2 >> 6)) as usize]
                 } else {
                     '=' as u8
                 });
             result.push(
                 if len >= 3 {
-                    self.enc_map[(t2 & 0x3f) as usize]
+                    BASE64BYTES[(t2 & 0x3f) as usize]
                 } else {
                     '=' as u8
                 });
