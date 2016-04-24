@@ -113,6 +113,35 @@ fn cookie_parse(s: &[u8]) -> HashMap<Vec<u8>, Vec<u8>> {
     result
 }
 
+fn profile_for(user: &[u8]) -> Vec<u8> {
+    let mut result = Vec::new();
+    result.extend_from_slice(b"email=");
+    result.extend(user.iter().filter(|&b| ! b"&=".contains(b)));
+    result.extend_from_slice(b"&uid=10&role=user");
+    result
+}
+
+fn forge_admin_cookie<'a, F: Fn(&'a [u8]) -> Vec<u8>>(f: &F) -> Vec<u8> {
+    // 0000000000111111111122222222223333333333 \ byte count
+    // 0123456789012345678901234567890123456789 /
+    // [Block_0_______][Block_1_______][Block_2 - AES blocks
+    // admin........... (. = 11 = 0x0b)         - what we want to encode (PKCS7 padding!)
+    // email=aaaaaaaaaaadmin...........&uid=10& - how we are going to encode it
+    // email=foo12@bar.com&uid=10&role=admin... - the end result
+
+    let input1 = b"aaaaaaaaaaadmin\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
+    assert_eq!(32, b"email=".len() + input1.len());
+    let output1 = f(input1);
+    let adminblock = &output1[16..32];
+    let input2 = b"foo12@bar.com";
+    let output2 = f(input2);
+    let mut result = Vec::new();
+    result.extend_from_slice(&output2[0..32]);
+    result.extend_from_slice(adminblock);
+    assert_eq!(48, result.len());
+    result
+}
+
 fn challenge9() {
     let input = b"YELLOW SUBMARINE";
     let padded = pkcs7_pad(input, 20);
@@ -188,7 +217,21 @@ fn challenge13() {
     e2.insert(b"such".to_vec(), b"".to_vec());
     assert_eq!(e2, m2);
 
-    println!("Challenge 13: Success (so far)");
+    let p = profile_for(b"foo@bar.com");
+    assert_eq!(&b"email=foo@bar.com&uid=10&role=user"[..], &p[..]);
+
+    let key: [u8; 16] = rand::random();
+
+    let encrypted_profile_for = |user| aes128_ecb_encrypt(&profile_for(user), &key);
+
+    let encrypted_admin_cookie = forge_admin_cookie(&encrypted_profile_for);
+    let plain_admin_cookie = aes128_ecb_decrypt(&encrypted_admin_cookie, &key);
+    println!("Challenge 13: Admin cookie: '{}' (len={})", escape_bytes(&plain_admin_cookie),
+                plain_admin_cookie.len());
+    let parsed_admin_cookie = cookie_parse(&plain_admin_cookie);
+    assert_eq!(parsed_admin_cookie.get(&b"role".to_vec()), Some(&b"admin".to_vec()));
+
+    println!("Challenge 13: Success");
 }
 
 pub fn run() {
