@@ -18,7 +18,7 @@ fn disclosing_encryption_oracle(plaintext: &[u8])
     let n1 = between.ind_sample(&mut rng);
     let n2 = between.ind_sample(&mut rng);
     input.extend(rng.gen_iter::<u8>().take(n1));
-    input.extend(plaintext);
+    input.extend_from_slice(plaintext);
     input.extend(rng.gen_iter::<u8>().take(n2));
     let key = rng.gen::<[u8; 16]>();
     if rng.gen() {
@@ -48,7 +48,7 @@ fn oracle_with_key(prefix: &[u8], key: &[u8], b64: &Base64Codec) -> Vec<u8> {
     aes128_ecb_encrypt(&plaintext, key)
 }
 
-fn make_oracle<'a>(b64: &'a Base64Codec) -> Box<FnMut(&[u8]) -> Vec<u8> + 'a> {
+fn make_oracle<'a>(b64: &'a Base64Codec) -> Box<(FnMut(&[u8]) -> Vec<u8>) + 'a> {
     let key: [u8; 16] = rand::random();
     Box::new(move |prefix| oracle_with_key(prefix, &key, &b64))
 }
@@ -105,8 +105,8 @@ fn crack_ecb_oracle(oracle: &mut FnMut(&[u8]) -> Vec<u8>,
 
 fn cookie_parse(s: &[u8]) -> HashMap<Vec<u8>, Vec<u8>> {
     let mut result = HashMap::new();
-    for chunk in s.split(|&b| b == ('&' as u8)) {
-        if let Some(idx) = chunk.iter().position(|&b| b == ('=' as u8)) {
+    for chunk in s.split(|&b| b == b'&') {
+        if let Some(idx) = chunk.iter().position(|&b| b == b'=') {
             result.insert(chunk[0 .. idx].to_vec(), chunk[(idx+1) ..].to_vec());
         }
     }
@@ -114,14 +114,14 @@ fn cookie_parse(s: &[u8]) -> HashMap<Vec<u8>, Vec<u8>> {
 }
 
 fn challenge9() {
-    let input = "YELLOW SUBMARINE".as_bytes();
+    let input = b"YELLOW SUBMARINE";
     let padded = pkcs7_pad(input, 20);
     println!("Challenge 9: {}", escape_bytes(&padded));
 }
 
 fn challenge10(b64: &Base64Codec) {
     let ciphertext = b64.decode(file_bytes("10.txt"));
-    let key = "YELLOW SUBMARINE".as_bytes();
+    let key = b"YELLOW SUBMARINE";
     let iv = [0; 16];
     let plaintext = aes128_cbc_decrypt(&ciphertext, key, &iv);
     println!("Challenge 10:\n{}", String::from_utf8_lossy(&plaintext));

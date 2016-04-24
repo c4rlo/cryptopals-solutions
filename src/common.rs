@@ -7,12 +7,12 @@ use crypto::aessafe;
 use crypto::symmetriccipher::{BlockEncryptor,BlockDecryptor};
 
 fn hexdigit_decode(d: u8) -> u8 {
-    if '0' as u8 <= d && d <= '9' as u8 {
-        d - '0' as u8
-    } else if 'a' as u8 <= d && d <= 'f' as u8 {
-        d - 'a' as u8 + 0xau8
-    } else if 'A' as u8 <= d && d <= 'F' as u8 {
-        d - 'A' as u8 + 0xau8
+    if b'0' <= d && d <= b'9' {
+        d - b'0'
+    } else if b'a' <= d && d <= b'f' {
+        d - b'a' + 0xau8
+    } else if b'A' <= d && d <= b'F' {
+        d - b'A' + 0xau8
     } else {
         panic!("Illegal hex digit")
     }
@@ -97,13 +97,13 @@ impl Base64Codec {
                 if len >= 2 {
                     BASE64BYTES[(((t1 & 0x0fu8) << 2) | (t2 >> 6)) as usize]
                 } else {
-                    '=' as u8
+                    b'='
                 });
             result.push(
                 if len >= 3 {
                     BASE64BYTES[(t2 & 0x3f) as usize]
                 } else {
-                    '=' as u8
+                    b'='
                 });
         }
         result
@@ -117,9 +117,9 @@ impl Base64Codec {
 
     pub fn decode<I: Iterator<Item=u8>>(&self, b: I) -> Vec<u8> {
         let mut result = Vec::new();
-        for quad in b.filter(|&b| b != ('\n' as u8)).chunks(4) {
+        for quad in b.filter(|&b| b != b'\n').chunks(4) {
             let len = quad.iter().cloned().take_while(
-                |&b| b != ('=' as u8)).count();
+                |&b| b != b'=').count();
             let q0 = self.decode_lookup(quad[0]);
             let q1 = self.decode_lookup(quad[1]);
             let q2 = if len >= 3 { self.decode_lookup(quad[2]) } else { 0u8 };
@@ -198,7 +198,6 @@ pub fn pkcs7_unpad(b: &mut Vec<u8>) {
     }
 }
 
-#[allow(dead_code)]
 fn aes128_block_encrypt(plaintext: &[u8], key: &[u8]) -> [u8; 16] {
     let encryptor = aessafe::AesSafe128Encryptor::new(key);
     let mut result = [0; 16];
@@ -216,7 +215,7 @@ fn aes128_block_decrypt(ciphertext: &[u8], key: &[u8]) -> [u8; 16] {
 pub fn aes128_ecb_encrypt(plaintext: &[u8], key: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     for block in pkcs7_pad(plaintext, 16).as_slice().chunks(16) {
-        result.extend(&aes128_block_encrypt(block, key));
+        result.extend_from_slice(&aes128_block_encrypt(block, key));
     }
     result
 }
@@ -225,7 +224,7 @@ pub fn aes128_ecb_encrypt(plaintext: &[u8], key: &[u8]) -> Vec<u8> {
 pub fn aes128_ecb_decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     for block in ciphertext.chunks(16) {
-        result.extend(&aes128_block_decrypt(block, key));
+        result.extend_from_slice(&aes128_block_decrypt(block, key));
     }
     pkcs7_unpad(&mut result);
     result
@@ -239,7 +238,7 @@ pub fn aes128_cbc_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8; 16])
         x = aes128_block_encrypt(
             xor(plainblock.iter().cloned(), x.iter().cloned()).as_slice(),
             key);
-        result.extend(&x);
+        result.extend_from_slice(&x);
     }
     result
 }

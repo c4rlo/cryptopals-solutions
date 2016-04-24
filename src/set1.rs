@@ -26,8 +26,7 @@ fn chardist_diff(a: &[f64; 256], b: &[f64; 256]) -> f64 {
 }
 
 fn corpus_chardist() -> [f64; 256] {
-    let filtered_bytes = file_bytes("corpus.txt").filter(
-        |&b| b != ('\n' as u8));
+    let filtered_bytes = file_bytes("corpus.txt").filter(|&b| b != b'\n');
     chardist(filtered_bytes)
 }
 
@@ -86,8 +85,8 @@ fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
     let mut scored_keysizes = Vec::new();
 
     for keysize in 2..41 {
-        let mut ed_sum = 0f64;
         const N: usize = 10;
+        let mut ed_sum = 0f64;
         for i in 0..N {
             let chunk1 = &ciphertext[(keysize*i) .. (keysize*(i+1))];
             let chunk2 = &ciphertext[(keysize*(i+1)) .. (keysize*(i+2))];
@@ -115,7 +114,7 @@ fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
         }
         println!("  Keysize {} has badness {}, key \"{}\"", sk.keysize,
                  sk.badness, escape_bytes(&key));
-        if best_key.len() == 0 {
+        if best_key.is_empty() {
             best_key = key;
         }
     }
