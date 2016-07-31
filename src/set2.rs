@@ -207,18 +207,23 @@ fn challenge12(b64: &Base64Codec) {
 }
 
 fn challenge13() {
-    let m1 = cookie_parse(b"foo=bar&baz=qux&zap=zazzle");
-    let mut e1 = HashMap::new();
-    e1.insert(b"foo".to_vec(), b"bar".to_vec());
-    e1.insert(b"baz".to_vec(), b"qux".to_vec());
-    e1.insert(b"zap".to_vec(), b"zazzle".to_vec());
-    assert_eq!(e1, m1);
+    macro_rules! hashmap {
+        ($( $key:expr => $val:expr ),* ) => {{
+            let mut map = HashMap::new();
+            $(map.insert($key.to_vec(), $val.to_vec());)*
+            map
+        }}
+    }
 
-    let m2 = cookie_parse(b"this=that&whatever&such=");
-    let mut e2 = HashMap::new();
-    e2.insert(b"this".to_vec(), b"that".to_vec());
-    e2.insert(b"such".to_vec(), b"".to_vec());
-    assert_eq!(e2, m2);
+    assert_eq!(
+        hashmap!(b"foo" => b"bar", b"baz" => b"qux", b"zap" => b"zazzle"),
+        cookie_parse(b"foo=bar&baz=qux&zap=zazzle")
+    );
+
+    assert_eq!(
+        hashmap!(b"this" => b"that", b"such" => b""),
+        cookie_parse(b"this=that&whatever&such=")
+    );
 
     let p = profile_for(b"foo@bar.com");
     assert_eq!(&b"email=foo@bar.com&uid=10&role=user"[..], &p[..]);
