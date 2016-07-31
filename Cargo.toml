@@ -6,3 +6,4 @@ authors = ["Carlo Teubner <carlo.teubner@gmail.com>"]
 [dependencies]
 rand = "0.3"
 rust-crypto = "^0.2"
+regex = "0.1"

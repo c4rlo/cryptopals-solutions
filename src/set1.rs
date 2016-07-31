@@ -4,6 +4,7 @@ use crypto;
 use crypto::{aes,blockmodes};
 use crypto::buffer::{ReadBuffer,WriteBuffer};
 use common::*;
+use items;
 
 fn chardist<I: Iterator<Item=u8>>(bytes: I) -> [f64; 256] {
     let mut counts = [0u64; 256];
@@ -220,16 +221,15 @@ fn challenge8() {
     }
 }
 
-pub fn run() {
-    println!("=== SET 1 ===");
+pub fn run(spec: &items::ItemsSpec) {
     let b64 = Base64Codec::new();
     let corpus_cd = corpus_chardist();
-    challenge1(&b64);
-    challenge2();
-    challenge3();
-    challenge4(&corpus_cd);
-    challenge5();
-    challenge6(&b64, &corpus_cd);
-    challenge7(&b64);
-    challenge8();
+    ch!(spec, challenge1, &b64);
+    ch!(spec, challenge2);
+    ch!(spec, challenge3);
+    ch!(spec, challenge4, &corpus_cd);
+    ch!(spec, challenge5);
+    ch!(spec, challenge6, &b64, &corpus_cd);
+    ch!(spec, challenge7, &b64);
+    ch!(spec, challenge8);
 }

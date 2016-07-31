@@ -4,6 +4,7 @@ use rand;
 use rand::Rng;
 use rand::distributions::{IndependentSample,Range};
 use common::*;
+use items;
 
 struct EncryptionOracleDisclosure {
     ciphertext: Vec<u8>,
@@ -236,12 +237,11 @@ fn challenge13() {
     println!("Challenge 13: Success");
 }
 
-pub fn run() {
-    println!("=== SET 2 ===");
+pub fn run(spec: &items::ItemsSpec) {
     let b64 = Base64Codec::new();
-    challenge9();
-    challenge10(&b64);
-    challenge11();
-    challenge12(&b64);
-    challenge13();
+    ch!(spec, challenge9);
+    ch!(spec, challenge10, &b64);
+    ch!(spec, challenge11);
+    ch!(spec, challenge12, &b64);
+    ch!(spec, challenge13);
 }

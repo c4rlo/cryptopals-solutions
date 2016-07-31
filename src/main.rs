@@ -1,11 +1,31 @@
 extern crate crypto;
 extern crate rand;
+extern crate regex;
 
 mod common;
+#[macro_use]
+mod items;
 mod set1;
 mod set2;
 
+use std::env;
+use std::io::Write;
+
+fn run() -> Result<items::ItemsSpec, String> {
+    let parser = items::ItemsParser::new();
+    let mut spec = items::ItemsSpec::new();
+    for arg in env::args().skip(1) {
+        try!(parser.parse_arg(&mut spec, &arg));
+    }
+    Ok(spec)
+}
+
 fn main() {
-    set1::run();
-    set2::run();
+    match run() {
+        Ok(spec) => {
+            set1::run(&spec);
+            set2::run(&spec);
+        },
+        Err(msg) => writeln!(std::io::stderr(), "{}", &msg).unwrap()
+    }
 }
