@@ -36,15 +36,15 @@ fn disclosing_encryption_oracle(plaintext: &[u8])
     }
 }
 
+const CHALLENGE12_SECRET: &'static [u8] =
+        b"Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg\
+          aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq\
+          dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg\
+          YnkK";
+
 fn oracle_with_key(prefix: &[u8], key: &[u8], b64: &Base64Codec) -> Vec<u8> {
-    let secret_b64 =
-            b"Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg\
-              aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq\
-              dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg\
-              YnkK";
-    //panic!("secret len = {}", b64.decode(secret_b64.iter().cloned()).len());
     let mut plaintext = prefix.to_vec();
-    plaintext.append(&mut b64.decode(secret_b64.iter().cloned()));
+    plaintext.append(&mut b64.decode(CHALLENGE12_SECRET.iter().cloned()));
     aes128_ecb_encrypt(&plaintext, key)
 }
 
@@ -71,7 +71,7 @@ fn crack_ecb_oracle(oracle: &mut FnMut(&[u8]) -> Vec<u8>,
                     num_blocks: usize,
                     plainsize: usize) -> Vec<u8> {
     let mut plaintext = Vec::new();
-    for blk_idx in 0..(num_blocks) {
+    for blk_idx in 0..num_blocks {
         let mut pre = vec![0; blocksize];
         let mut blk_guess =
                 if blk_idx == 0 { pre.clone() }
@@ -190,10 +190,12 @@ fn challenge12(b64: &Base64Codec) {
 
     println!("Challenge 12: Blocksize is {}, Plainsize is {}", blocksize,
              plainsize);
+    assert_eq!(16, blocksize);
 
     let is_ecb = is_ecb(&mut *oracle);
 
     println!("Challenge 12: is_ecb is {}", is_ecb);
+    assert!(is_ecb);
 
     let num_blocks = size1 / blocksize;
 

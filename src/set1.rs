@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use crypto;
 use crypto::{aes,blockmodes};
 use crypto::buffer::{ReadBuffer,WriteBuffer};
-use crypto::symmetriccipher::Decryptor;
 use common::*;
 
 fn chardist<I: Iterator<Item=u8>>(bytes: I) -> [f64; 256] {
