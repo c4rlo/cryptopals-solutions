@@ -1,4 +1,4 @@
-# cryptopals-solns
+# cryptopals-solutions
 
 Solutions in Rust to the exercises from http://cryptopals.com/
 

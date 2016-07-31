@@ -1,5 +1,5 @@
 [package]
-name = "cryptopals-solns"
+name = "cryptopals-solutions"
 version = "0.1.0"
 authors = ["Carlo Teubner <carlo.teubner@gmail.com>"]
 
