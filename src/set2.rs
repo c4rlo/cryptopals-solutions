@@ -43,15 +43,31 @@ const CHALLENGE12_SECRET: &'static [u8] =
           dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg\
           YnkK";
 
-fn oracle_with_key(prefix: &[u8], key: &[u8], b64: &Base64Codec) -> Vec<u8> {
-    let mut plaintext = prefix.to_vec();
+fn oracle_with_key(arg: &[u8], key: &[u8], b64: &Base64Codec) -> Vec<u8> {
+    let mut plaintext = arg.to_vec();
     plaintext.append(&mut b64.decode(CHALLENGE12_SECRET.iter().cloned()));
     aes128_ecb_encrypt(&plaintext, key)
 }
 
+fn randpfx_oracle_with_key(randpfx: &[u8], arg: &[u8], key: &[u8],
+                           b64: &Base64Codec) -> Vec<u8> {
+    let mut plaintext = randpfx.to_vec();
+    plaintext.extend_from_slice(arg);
+    oracle_with_key(&plaintext, key, b64)
+}
+
 fn make_oracle<'a>(b64: &'a Base64Codec) -> Box<(FnMut(&[u8]) -> Vec<u8>) + 'a> {
     let key: [u8; 16] = rand::random();
-    Box::new(move |prefix| oracle_with_key(prefix, &key, &b64))
+    Box::new(move |arg| oracle_with_key(arg, &key, &b64))
+}
+
+fn make_randpfx_oracle<'a>(b64: &'a Base64Codec)
+                                        -> Box<(FnMut(&[u8]) -> Vec<u8>) + 'a> {
+    let mut rng = rand::thread_rng();
+    let key: [u8; 16] = rng.gen();
+    let randpfx_len = rng.gen_range(10, 200);
+    let randpfx = rng.gen_iter::<u8>().take(randpfx_len).collect::<Vec<u8>>();
+    Box::new(move |arg| randpfx_oracle_with_key(&randpfx, arg, &key, &b64))
 }
 
 fn is_ecb(oracle: &mut FnMut(&[u8]) -> Vec<u8>) -> bool {
@@ -69,39 +85,82 @@ fn is_ecb(oracle: &mut FnMut(&[u8]) -> Vec<u8>) -> bool {
 
 fn crack_ecb_oracle(oracle: &mut FnMut(&[u8]) -> Vec<u8>,
                     blocksize: usize,
-                    num_blocks: usize,
-                    plainsize: usize) -> Vec<u8> {
+                    pfxlen: usize) -> Vec<u8> {
+    let pfxrem = pfxlen % blocksize;
+    let pfxfill = if pfxrem == 0 { 0 } else { blocksize - pfxrem };
+    let pfxblocks = (pfxlen + blocksize - 1) / blocksize;
+    let full_pad_block = &oracle(&vec![blocksize as u8; pfxfill + blocksize])
+                            [blocksize*pfxblocks .. blocksize*(pfxblocks+1)];
     let mut plaintext = Vec::new();
-    for blk_idx in 0..num_blocks {
-        let mut pre = vec![0; blocksize];
-        let mut blk_guess =
-                if blk_idx == 0 { pre.clone() }
-                else { plaintext[blocksize*(blk_idx-1)..].to_vec() };
-        for i in 1..(blocksize+1) {
+    for i in 0.. {  // iterate over blocks
+        let mut pre = vec![0; pfxfill + blocksize];
+        let mut aligned_blk_guess;
+        if i == 0 {
+            aligned_blk_guess = vec![0; pfxfill + blocksize];
+        } else {
+            aligned_blk_guess = vec![0; pfxfill];
+            aligned_blk_guess.extend_from_slice(
+                &plaintext[blocksize*(i-1)..]);
+        }
+        for j in 0..blocksize {  // iterate over bytes within block
             pre.pop();
             let ciphertext = oracle(&pre);
-            let block_i = &ciphertext[
-                                    blocksize*blk_idx .. blocksize*(blk_idx+1)];
-            blk_guess.remove(0);
-            blk_guess.push(0);
-            assert_eq!(blocksize, blk_guess.len());
-            for b in 0..256 {
+            let block_i_begin = blocksize*(pfxblocks + i);
+            let block_i_end = block_i_begin + blocksize;
+            let block_i = &ciphertext[block_i_begin .. block_i_end];
+            aligned_blk_guess.remove(pfxfill);
+            aligned_blk_guess.push(0);
+            assert_eq!(pfxfill + blocksize, aligned_blk_guess.len());
+            for b in 0..256 {  // iterate over possible byte values
                 let byte = b as u8;
-                blk_guess[blocksize-1] = byte;
-                let candidate = &oracle(&blk_guess)[0..blocksize];
+                *aligned_blk_guess.last_mut().unwrap() = byte;
+                let guess_ciphertext = oracle(&aligned_blk_guess);
+                let candidate =
+                    &guess_ciphertext[ pfxblocks    * blocksize ..
+                                      (pfxblocks+1) * blocksize];
                 if candidate == block_i {
                     plaintext.push(byte);
                     break;
                 }
             }
-            if plaintext.len() == plainsize {
+            // are we done?
+            if block_i_end == ciphertext.len() - blocksize
+                && &ciphertext[block_i_end .. block_i_end+blocksize]
+                    == full_pad_block
+            {
                 return plaintext;
             }
-            assert_eq!(blocksize*blk_idx + i, plaintext.len());
+            assert_eq!(blocksize*i + j + 1, plaintext.len());
         }
-        assert!(pre.is_empty());
+        assert_eq!(pfxfill, pre.len());
     }
     unreachable!();
+}
+
+fn determine_randpfx_len(oracle: &mut FnMut(&[u8]) -> Vec<u8>,
+                         blocksize: usize) -> usize {
+    let mut probe = vec![0; 2*blocksize];
+    for i in 0..blocksize {
+        let result = oracle(&probe);
+        let mut chunks = result.chunks(blocksize);
+        let chunk0 = chunks.next().unwrap();
+        let twinpos = chunks.scan(chunk0, |prev, curr| {
+            let is_twin = prev == &curr;
+            *prev = curr;
+            Some(is_twin)
+        }).position(|item| item);
+        if let Some(n) = twinpos {
+            return blocksize*n - i;
+        }
+        probe.push(0);
+    }
+    unreachable!();
+}
+
+fn crack_randpfx_oracle(oracle: &mut FnMut(&[u8]) -> Vec<u8>,
+                        blocksize: usize) -> Vec<u8> {
+    let randpfx_len = determine_randpfx_len(oracle, blocksize);
+    crack_ecb_oracle(oracle, blocksize, randpfx_len)
 }
 
 fn cookie_parse(s: &[u8]) -> HashMap<Vec<u8>, Vec<u8>> {
@@ -174,23 +233,17 @@ fn challenge12(b64: &Base64Codec) {
     let mut oracle = make_oracle(b64);
 
     let blocksize;
-    let plainsize;
     let size1 = oracle(&[]).len();
-    println!("Challenge 12: size1 = {}", size1);
-    let mut prefix = Vec::new();
+    let mut arg = Vec::new();
     loop {
-        prefix.push(0);
-        let size2 = oracle(&prefix).len();
+        arg.push(0);
+        let size2 = oracle(&arg).len();
         if size2 > size1 {
             blocksize = size2 - size1;
-            plainsize = if prefix.len() > 1 { size1 - prefix.len() }
-                        else                { size1 };
             break;
         }
     }
 
-    println!("Challenge 12: Blocksize is {}, Plainsize is {}", blocksize,
-             plainsize);
     assert_eq!(16, blocksize);
 
     let is_ecb = is_ecb(&mut *oracle);
@@ -198,10 +251,7 @@ fn challenge12(b64: &Base64Codec) {
     println!("Challenge 12: is_ecb is {}", is_ecb);
     assert!(is_ecb);
 
-    let num_blocks = size1 / blocksize;
-
-    let plaintext = crack_ecb_oracle(&mut *oracle, blocksize, num_blocks,
-                                     plainsize);
+    let plaintext = crack_ecb_oracle(&mut *oracle, blocksize, 0);
 
     println!("Challenge 12:\n{}", String::from_utf8_lossy(&plaintext));
 }
@@ -230,16 +280,25 @@ fn challenge13() {
 
     let key: [u8; 16] = rand::random();
 
-    let encrypted_profile_for = |user| aes128_ecb_encrypt(&profile_for(user), &key);
+    let encrypted_profile_for =
+        |user| aes128_ecb_encrypt(&profile_for(user), &key);
 
     let encrypted_admin_cookie = forge_admin_cookie(&encrypted_profile_for);
     let plain_admin_cookie = aes128_ecb_decrypt(&encrypted_admin_cookie, &key);
-    println!("Challenge 13: Admin cookie: '{}' (len={})", escape_bytes(&plain_admin_cookie),
-                plain_admin_cookie.len());
+    println!("Challenge 13: Admin cookie: '{}' (len={})",
+            escape_bytes(&plain_admin_cookie), plain_admin_cookie.len());
     let parsed_admin_cookie = cookie_parse(&plain_admin_cookie);
-    assert_eq!(parsed_admin_cookie.get(&b"role".to_vec()), Some(&b"admin".to_vec()));
+    assert_eq!(parsed_admin_cookie.get(&b"role".to_vec()),
+            Some(&b"admin".to_vec()));
 
     println!("Challenge 13: Success");
+}
+
+fn challenge14(b64: &Base64Codec) {
+    let mut oracle = make_randpfx_oracle(b64);
+    let blocksize = 16;
+    let plaintext = crack_randpfx_oracle(&mut *oracle, blocksize);
+    println!("Challenge 14:\n{}", String::from_utf8_lossy(&plaintext));
 }
 
 pub fn run(spec: &items::ItemsSpec) {
@@ -249,4 +308,5 @@ pub fn run(spec: &items::ItemsSpec) {
     ch!(spec, challenge11);
     ch!(spec, challenge12, &b64);
     ch!(spec, challenge13);
+    ch!(spec, challenge14, &b64);
 }
