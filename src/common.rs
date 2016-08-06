@@ -7,14 +7,11 @@ use crypto::aessafe;
 use crypto::symmetriccipher::{BlockEncryptor,BlockDecryptor};
 
 fn hexdigit_decode(d: u8) -> u8 {
-    if b'0' <= d && d <= b'9' {
-        d - b'0'
-    } else if b'a' <= d && d <= b'f' {
-        d - b'a' + 0xau8
-    } else if b'A' <= d && d <= b'F' {
-        d - b'A' + 0xau8
-    } else {
-        panic!("Illegal hex digit")
+    match d {
+        b'0'...b'9' => d - b'0',
+        b'a'...b'f' => d - b'a' + 0xau8,
+        b'A'...b'F' => d - b'A' + 0xau8,
+        _           => panic!("Illegal hex digit")
     }
 }
 
