@@ -101,7 +101,7 @@ impl Base64Codec {
                 });
             result.push(
                 if len >= 3 {
-                    BASE64BYTES[(t2 & 0x3f) as usize]
+                    BASE64BYTES[(t2 & 0x3fu8) as usize]
                 } else {
                     b'='
                 });
@@ -118,8 +118,7 @@ impl Base64Codec {
     pub fn decode<I: Iterator<Item=u8>>(&self, b: I) -> Vec<u8> {
         let mut result = Vec::new();
         for quad in b.filter(|&b| b != b'\n').chunks(4) {
-            let len = quad.iter().cloned().take_while(
-                |&b| b != b'=').count();
+            let len = quad.iter().cloned().take_while(|&b| b != b'=').count();
             let q0 = self.decode_lookup(quad[0]);
             let q1 = self.decode_lookup(quad[1]);
             let q2 = if len >= 3 { self.decode_lookup(quad[2]) } else { 0u8 };

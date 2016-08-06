@@ -27,8 +27,7 @@ fn disclosing_encryption_oracle(plaintext: &[u8])
             ciphertext: aes128_ecb_encrypt(&input, &key),
             is_ecb: true
         }
-    }
-    else {
+    } else {
         let iv = rng.gen::<[u8; 16]>();
         EncryptionOracleDisclosure {
             ciphertext: aes128_cbc_encrypt(&input, &key, &iv),

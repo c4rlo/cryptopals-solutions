@@ -86,7 +86,7 @@ impl ItemsParser {
             fn parse_num(s: &Option<&str>) -> Option<usize> {
                 if let Some(si) = *s {
                     if ! si.is_empty() {
-                        return Some(si.parse().unwrap())
+                        return Some(si.parse().unwrap());
                     }
                 }
                 None
@@ -101,7 +101,7 @@ impl ItemsParser {
                 (None, None)       => return Err(format!("illegal arg spec: {}", arg))
             }
         } else {
-            return Err(format!("illegal arg spec: {}", arg))
+            return Err(format!("illegal arg spec: {}", arg));
         }
         Ok(())
     }
