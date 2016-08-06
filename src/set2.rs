@@ -301,6 +301,20 @@ fn challenge14(b64: &Base64Codec) {
     println!("Challenge 14:\n{}", String::from_utf8_lossy(&plaintext));
 }
 
+fn challenge15() {
+    let mut test1 = b"ICE ICE BABY\x04\x04\x04\x04".to_vec();
+    assert!(pkcs7_unpad_if_valid(&mut test1));
+    assert_eq!(b"ICE ICE BABY".as_ref(), test1.as_slice());
+
+    let mut test2 = b"ICE ICE BABY\x05\x05\x05\x05".to_vec();
+    assert!(! pkcs7_unpad_if_valid(&mut test2));
+    assert_eq!(b"ICE ICE BABY\x05\x05\x05\x05".as_ref(), test2.as_slice());
+
+    let mut test3 = b"ICE ICE BABY\x01\x02\x03\x04".to_vec();
+    assert!(! pkcs7_unpad_if_valid(&mut test3));
+    assert_eq!(b"ICE ICE BABY\x01\x02\x03\x04".as_ref(), test3.as_slice());
+}
+
 pub fn run(spec: &items::ItemsSpec) {
     let b64 = Base64Codec::new();
     ch!(spec, challenge9);
@@ -309,4 +323,5 @@ pub fn run(spec: &items::ItemsSpec) {
     ch!(spec, challenge12, &b64);
     ch!(spec, challenge13);
     ch!(spec, challenge14, &b64);
+    ch!(spec, challenge15);
 }

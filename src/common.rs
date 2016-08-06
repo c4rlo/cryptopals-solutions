@@ -191,11 +191,25 @@ pub fn pkcs7_pad(b: &[u8], blocksize: usize) -> Vec<u8> {
     result
 }
 
-pub fn pkcs7_unpad(b: &mut Vec<u8>) {
-    if let Some(&last) = b.last() {
-        let len = b.len();
-        b.truncate(len - last as usize);
+pub fn pkcs7_unpad(v: &mut Vec<u8>) {
+    if let Some(&b) = v.last() {
+        let len = v.len();
+        v.truncate(len - b as usize);
     }
+}
+
+pub fn pkcs7_unpad_if_valid(v: &mut Vec<u8>) -> bool {
+    if let Some(&b) = v.last() {
+        let n = b as usize;
+        let len = v.len();
+        if 0 < n && n <= len {
+            if v.iter().rev().take(n).all(|&x| x == b) {
+                v.truncate(len - n);
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn aes128_block_encrypt(plaintext: &[u8], key: &[u8]) -> [u8; 16] {
