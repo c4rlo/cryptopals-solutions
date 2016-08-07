@@ -11,17 +11,17 @@ mod set2;
 use std::env;
 use std::io::Write;
 
-fn run() -> Result<items::ItemsSpec, String> {
+fn parse_item_spec<T: IntoIterator<Item=String>>(args: T) -> Result<items::ItemsSpec, String> {
     let parser = items::ItemsParser::new();
     let mut spec = items::ItemsSpec::new();
-    for arg in env::args().skip(1) {
+    for arg in args {
         try!(parser.parse_arg(&mut spec, &arg));
     }
     Ok(spec)
 }
 
 fn main() {
-    match run() {
+    match parse_item_spec(env::args().skip(1)) {
         Ok(spec) => {
             set1::run(&spec);
             set2::run(&spec);
