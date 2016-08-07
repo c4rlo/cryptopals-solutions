@@ -141,13 +141,9 @@ fn determine_randpfx_len(oracle: &mut FnMut(&[u8]) -> Vec<u8>,
     let mut probe = vec![0; 2*blocksize];
     for i in 0..blocksize {
         let result = oracle(&probe);
-        let mut chunks = result.chunks(blocksize);
-        let chunk0 = chunks.next().unwrap();
-        let twinpos = chunks.scan(chunk0, |prev, curr| {
-            let is_twin = prev == &curr;
-            *prev = curr;
-            Some(is_twin)
-        }).position(|item| item);
+        let chunks = result.chunks(blocksize);
+        let twinpos = chunks.clone().skip(1).zip(chunks).map(|(i,j)| i == j)
+                        .position(|item| item);
         if let Some(n) = twinpos {
             return blocksize*n - i;
         }
