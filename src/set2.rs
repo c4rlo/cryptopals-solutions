@@ -201,6 +201,43 @@ fn forge_admin_cookie<'a, F: Fn(&'a [u8]) -> Vec<u8>>(f: &F) -> Vec<u8> {
     result
 }
 
+struct Challenge16 {
+    key: [u8; 16]
+}
+
+impl Challenge16 {
+    fn new() -> Self {
+        Challenge16 {
+            key: rand::random()
+        }
+    }
+
+    fn construct_commentstring(&self, userdata: &[u8]) -> Vec<u8> {
+        let userdata_esc = userdata.iter().flat_map(|&b|
+                                 match b {
+                                     b';' => b"%3b".to_vec(),
+                                     b'=' => b"%3d".to_vec(),
+                                     _    => vec![b]
+                                 });
+        let mut result = b"comment1=cooking%20MCs;userdata=".to_vec();
+        result.extend(userdata_esc);
+        result.extend_from_slice(b";comment2=%20like%20a%20pound%20of%20bacon");
+        result
+    }
+
+    fn construct_encrypted_commentstring(&self, userdata: &[u8]) -> Vec<u8> {
+        aes128_cbc_encrypt(&self.construct_commentstring(userdata), &self.key,
+                           &[0u8; 16])
+    }
+
+    fn is_admin(&self, encrypted_commentstring: &[u8]) -> bool {
+        let dec = aes128_cbc_decrypt(encrypted_commentstring, &self.key,
+                                     &[0u8; 16]);
+        println!("Challenge 16: decryption = {}", escape_bytes(&dec));
+        dec.windows(12).any(|w| w == b";admin=true;")
+    }
+}
+
 fn challenge9() {
     let input = b"YELLOW SUBMARINE";
     let padded = pkcs7_pad(input, 20);
@@ -314,6 +351,30 @@ fn challenge15() {
     assert_eq!(b"ICE ICE BABY\x01\x02\x03\x04".as_ref(), test3.as_slice());
 }
 
+fn challenge16() {
+    let c = Challenge16::new();
+    println!("Challenge 16: {}", &escape_bytes(
+            &c.construct_commentstring(b"oh_hi")));
+    println!("Challenge 16: {}", &escape_bytes(
+            &c.construct_commentstring(b"oh;my")));
+    assert!(
+        ! c.is_admin(&c.construct_encrypted_commentstring(b";admin=true;")));
+
+    let plain = b"aaaaaaaaaaaaaaaaKadminMtrueKaaaa";
+    assert_eq!(32, plain.len());
+
+    let mut enc = c.construct_encrypted_commentstring(plain);
+    assert!(! c.is_admin(&enc));
+
+    enc[32] ^= 0x70u8;
+    enc[38] ^= 0x70u8;
+    enc[43] ^= 0x70u8;
+
+    assert!(c.is_admin(&enc));
+
+    println!("Challenge 16: Success");
+}
+
 pub fn run(spec: &items::ItemsSpec) {
     let b64 = Base64Codec::new();
     ch!(spec, challenge9);
@@ -323,4 +384,5 @@ pub fn run(spec: &items::ItemsSpec) {
     ch!(spec, challenge13);
     ch!(spec, challenge14, &b64);
     ch!(spec, challenge15);
+    ch!(spec, challenge16);
 }
