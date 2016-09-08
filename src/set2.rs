@@ -1,4 +1,3 @@
-use std::iter;
 use std::collections::{HashMap,HashSet};
 use rand;
 use rand::Rng;
@@ -71,8 +70,7 @@ fn make_randpfx_oracle<'a>(b64: &'a Base64Codec)
 
 fn is_ecb(oracle: &mut FnMut(&[u8]) -> Vec<u8>) -> bool {
     const BLOCKSIZE: usize = 16;
-    let ciphertext = oracle(
-        iter::repeat(0).take(3*BLOCKSIZE-1).collect::<Vec<u8>>().as_slice());
+    let ciphertext = oracle(&[0; 3*BLOCKSIZE-1]);
     let mut blocks = HashSet::new();
     for block in ciphertext.chunks(BLOCKSIZE) {
         if ! blocks.insert(block) {
