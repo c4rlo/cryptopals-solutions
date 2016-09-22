@@ -6,6 +6,8 @@ use std::fs::File;
 use crypto::aessafe;
 use crypto::symmetriccipher::{BlockEncryptor,BlockDecryptor};
 
+pub const AES_BLOCKSIZE: usize = 16;
+
 fn hexdigit_decode(d: u8) -> u8 {
     match d {
         b'0'...b'9' => d - b'0',
@@ -195,17 +197,24 @@ pub fn pkcs7_unpad(v: &mut Vec<u8>) {
 }
 
 pub fn pkcs7_unpad_if_valid(v: &mut Vec<u8>) -> bool {
+    if let Some(n) = pkcs7_validated_padding(v) {
+        let len = v.len();
+        v.truncate(len - n);
+        return true;
+    }
+    false
+}
+
+pub fn pkcs7_validated_padding(v: &Vec<u8>) -> Option<usize> {
     if let Some(&b) = v.last() {
         let n = b as usize;
-        let len = v.len();
-        if 0 < n && n <= len {
+        if 0 < n && n <= v.len() {
             if v.iter().rev().take(n).all(|&x| x == b) {
-                v.truncate(len - n);
-                return true;
+                return Some(n);
             }
         }
     }
-    false
+    None
 }
 
 fn aes128_block_encrypt(plaintext: &[u8], key: &[u8]) -> [u8; 16] {
@@ -253,7 +262,7 @@ pub fn aes128_cbc_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8; 16])
     result
 }
 
-pub fn aes128_cbc_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8; 16])
+pub fn aes128_cbc_decrypt_raw(ciphertext: &[u8], key: &[u8], iv: &[u8; 16])
             -> Vec<u8> {
     let mut x: &[u8] = iv;
     let mut result = Vec::new();
@@ -263,6 +272,12 @@ pub fn aes128_cbc_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8; 16])
                 x.iter().cloned()));
         x = cipherblock;
     }
+    result
+}
+
+pub fn aes128_cbc_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8; 16])
+            -> Vec<u8> {
+    let mut result = aes128_cbc_decrypt_raw(ciphertext, key, iv);
     pkcs7_unpad(&mut result);
     result
 }

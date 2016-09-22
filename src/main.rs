@@ -7,6 +7,7 @@ mod common;
 mod items;
 mod set1;
 mod set2;
+mod set3;
 
 use std::env;
 use std::io::Write;
@@ -25,6 +26,7 @@ fn main() {
         Ok(spec) => {
             set1::run(&spec);
             set2::run(&spec);
+            set3::run(&spec);
         },
         Err(msg) => writeln!(std::io::stderr(), "{}", &msg).unwrap()
     }
