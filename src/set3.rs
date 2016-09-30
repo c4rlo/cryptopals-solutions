@@ -68,18 +68,20 @@ impl<'a> Challenge17BlackBox<'a> {
 
     fn gimme_test(&self) -> CbcEncryption {
         let iv: [u8; AES_BLOCKSIZE] = rand::random();
-        let ciphertext = aes128_cbc_encrypt(b"1234567890abcdefghijklmnopqrstuvwxzy", &self.key,
-                                            &iv);
+        let ciphertext = aes128_cbc_encrypt(
+            b"1234567890abcdefghijklmnopqrstuvwxzy", &self.key, &iv);
         CbcEncryption::new(ciphertext, iv)
     }
 
     fn has_valid_padding(&self, enc: &CbcEncryption) -> bool {
-        let plaintext = aes128_cbc_decrypt_raw(&enc.ciphertext, &self.key, &enc.iv);
+        let plaintext = aes128_cbc_decrypt_raw(&enc.ciphertext, &self.key,
+                                               &enc.iv);
         pkcs7_validated_padding(&plaintext).is_some()
     }
 }
 
-fn cbc_find_padding(enc: &CbcEncryption, blackbox: &Challenge17BlackBox) -> usize {
+fn cbc_find_padding(enc: &CbcEncryption, blackbox: &Challenge17BlackBox)
+        -> usize {
     let mut e = enc.clone();
     assert!(e.ciphertext.len() >= AES_BLOCKSIZE);
     let start = e.ciphertext.len() - AES_BLOCKSIZE;
@@ -92,10 +94,10 @@ fn cbc_find_padding(enc: &CbcEncryption, blackbox: &Challenge17BlackBox) -> usiz
     1
 }
 
-// Decrypt the last AES block in encryption 'enc' using the given 'blackbox'.  'padding' must be
-// the number of padding bytes that are known to occur at the end of 'enc'.  Return the resulting
-// plaintext in reverse (happens to be convenient for both caller and callee), excluding any
-// padding.
+// Decrypt the last AES block in encryption 'enc' using the given 'blackbox'.
+// 'padding' must be the number of padding bytes that are known to occur at the
+// end of 'enc'.  Return the resulting plaintext in reverse (happens to be
+// convenient for both caller and callee), excluding any padding.
 fn cbc_crack_last_block_rev(encryption: &CbcEncryption, padding: usize,
                             blackbox: &Challenge17BlackBox) -> Vec<u8> {
     let len = encryption.ciphertext.len();
@@ -114,13 +116,13 @@ fn cbc_crack_last_block_rev(encryption: &CbcEncryption, padding: usize,
             let guess_u8 = guess as u8;
             *enc.twiddle_at(pos) = orig ^ guess_u8;
             if blackbox.has_valid_padding(&enc) {
-                // We know that (very likely) plaintext_byte ^ guess_u8 == new_padding_u8.
-                // Therefore...
+                // We know that (very likely)
+                // plaintext_byte ^ guess_u8 == new_padding_u8.  Therefore...
                 let plaintext_byte = new_padding_u8 ^ guess_u8;
                 candidates.push(plaintext_byte);
             }
         }
-        assert_eq!(1, candidates.len());  // TODO: This need not necessarily hold true
+        assert_eq!(1, candidates.len()); // TODO: This need not always hold true
         result.push(candidates[0]);
     }
 
@@ -131,7 +133,8 @@ fn cbc_crack_last_block_rev(encryption: &CbcEncryption, padding: usize,
     }
 }
 
-fn cbc_crack(mut enc: CbcEncryption, blackbox: &Challenge17BlackBox) -> Vec<u8> {
+fn cbc_crack(mut enc: CbcEncryption, blackbox: &Challenge17BlackBox)
+        -> Vec<u8> {
     let ciphertext_len = enc.ciphertext.len();
     let num_blocks = ciphertext_len / AES_BLOCKSIZE;
 
