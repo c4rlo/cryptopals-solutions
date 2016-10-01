@@ -41,7 +41,7 @@ impl CbcEncryption {
 }
 
 struct Challenge17BlackBox<'a> {
-    key: [u8; AES_BLOCKSIZE],
+    key: [u8; 16],
     b64: &'a Base64Codec
 }
 
