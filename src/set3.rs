@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use rand;
 use rand::distributions::{IndependentSample,Range};
+use byteorder::{LittleEndian,WriteBytesExt};
 use common::*;
 use items;
 
@@ -15,6 +16,9 @@ const CHALLENGE17_SECRETS: [ &'static [u8]; 10 ] = [
     b"MDAwMDA3SSdtIG9uIGEgcm9sbCwgaXQncyB0aW1lIHRvIGdvIHNvbG8=",
     b"MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g=",
     b"MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93" ];
+
+const CHALLENGE18_SECRET: &'static [u8] =
+    b"L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==";
 
 #[derive(Clone)]
 struct CbcEncryption {
@@ -156,6 +160,50 @@ fn cbc_crack(mut enc: CbcEncryption, blackbox: &Challenge17BlackBox)
     plaintext_rev
 }
 
+struct AesCtrKeyStream {
+    key: [u8; 16],
+    nonce: u64,
+    counter: u64,
+    block: [u8; AES_BLOCKSIZE],
+    byte_idx: usize
+}
+
+impl AesCtrKeyStream {
+    fn new(key: [u8; 16], nonce: u64) -> Self {
+        AesCtrKeyStream {
+            key: key,
+            nonce: nonce,
+            counter: 0,
+            block: [0; AES_BLOCKSIZE],
+            byte_idx: 0
+        }
+    }
+}
+
+impl Iterator for AesCtrKeyStream {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.byte_idx == 0 {
+            let mut plainblock = [0u8; 16];
+            (&mut plainblock[..8]).write_u64::<LittleEndian>(self.nonce)
+                .unwrap();
+            (&mut plainblock[8..]).write_u64::<LittleEndian>(self.counter)
+                .unwrap();
+            let plainblock = plainblock;
+            self.block = aes128_block_encrypt(&plainblock, &self.key);
+            self.counter += 1;
+        }
+        let result = self.block[self.byte_idx];
+        self.byte_idx = (self.byte_idx + 1) % AES_BLOCKSIZE;
+        Some(result)
+    }
+}
+
+fn aes_ctr_crypt(input: &[u8], key: [u8; 16], nonce: u64) -> Vec<u8> {
+    xor(AesCtrKeyStream::new(key, nonce), input.iter().cloned())
+}
+
 fn challenge17(b64: &Base64Codec) {
     let blackbox = Challenge17BlackBox::new(b64);
 
@@ -189,7 +237,14 @@ fn challenge17(b64: &Base64Codec) {
     }
 }
 
+fn challenge18(b64: &Base64Codec) {
+    let ciphertext = b64.decode(CHALLENGE18_SECRET.iter().cloned());
+    let plaintext = aes_ctr_crypt(&ciphertext, *b"YELLOW SUBMARINE", 0);
+    println!("Challenge 18: {}", escape_bytes(&plaintext));
+}
+
 pub fn run(spec: &items::ItemsSpec) {
     let b64 = Base64Codec::new();
     ch!(spec, challenge17, &b64);
+    ch!(spec, challenge18, &b64);
 }

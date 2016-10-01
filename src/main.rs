@@ -1,6 +1,7 @@
 extern crate crypto;
 extern crate rand;
 extern crate regex;
+extern crate byteorder;
 
 mod common;
 #[macro_use]
