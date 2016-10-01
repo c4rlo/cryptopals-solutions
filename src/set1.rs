@@ -121,7 +121,7 @@ fn challenge1(b64: &Base64Codec) {
                      aWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
     let raw = hex_decode(input);
     let b64 = b64.encode(&raw);
-    assert_eq!(expected.as_ref(), b64.as_slice());
+    assert_eq!(&expected[..], &b64[..]);
     println!("Challenge 1: Success.");
 }
 

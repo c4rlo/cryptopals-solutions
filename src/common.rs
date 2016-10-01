@@ -238,7 +238,7 @@ pub fn aes128_block_decrypt(ciphertext: &[u8], key: &[u8]) -> [u8; 16] {
 
 pub fn aes128_ecb_encrypt(plaintext: &[u8], key: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
-    for block in pkcs7_pad(plaintext, 16).as_slice().chunks(16) {
+    for block in pkcs7_pad(plaintext, 16).chunks(16) {
         result.extend_from_slice(&aes128_block_encrypt(block, key));
     }
     result
