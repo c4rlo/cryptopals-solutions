@@ -2,6 +2,8 @@ use std::collections::HashSet;
 use rand;
 use rand::distributions::{IndependentSample,Range};
 use byteorder::{LittleEndian,WriteBytesExt};
+use crypto::aessafe::AesSafe128Encryptor;
+use crypto::symmetriccipher::BlockEncryptor;
 use common::*;
 use items;
 
@@ -161,7 +163,7 @@ fn cbc_crack(mut enc: CbcEncryption, blackbox: &Challenge17BlackBox)
 }
 
 struct AesCtrKeyStream {
-    key: [u8; 16],
+    block_encryptor: AesSafe128Encryptor,
     nonce: u64,
     counter: u64,
     block: [u8; AES_BLOCKSIZE],
@@ -171,7 +173,7 @@ struct AesCtrKeyStream {
 impl AesCtrKeyStream {
     fn new(key: [u8; 16], nonce: u64) -> Self {
         AesCtrKeyStream {
-            key: key,
+            block_encryptor: AesSafe128Encryptor::new(&key),
             nonce: nonce,
             counter: 0,
             block: [0; AES_BLOCKSIZE],
@@ -190,8 +192,7 @@ impl Iterator for AesCtrKeyStream {
                 .unwrap();
             (&mut plainblock[8..]).write_u64::<LittleEndian>(self.counter)
                 .unwrap();
-            let plainblock = plainblock;
-            self.block = aes128_block_encrypt(&plainblock, &self.key);
+            self.block_encryptor.encrypt_block(&plainblock, &mut self.block);
             self.counter += 1;
         }
         let result = self.block[self.byte_idx];

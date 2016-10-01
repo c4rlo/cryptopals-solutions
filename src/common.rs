@@ -225,14 +225,14 @@ pub fn pkcs7_validated_padding(v: &Vec<u8>) -> Option<usize> {
     None
 }
 
-pub fn aes128_block_encrypt(plaintext: &[u8], key: &[u8]) -> [u8; 16] {
+fn aes128_block_encrypt(plaintext: &[u8], key: &[u8]) -> [u8; 16] {
     let encryptor = aessafe::AesSafe128Encryptor::new(key);
     let mut result = [0; 16];
     encryptor.encrypt_block(plaintext, &mut result);
     result
 }
 
-pub fn aes128_block_decrypt(ciphertext: &[u8], key: &[u8]) -> [u8; 16] {
+fn aes128_block_decrypt(ciphertext: &[u8], key: &[u8]) -> [u8; 16] {
     let decryptor = aessafe::AesSafe128Decryptor::new(key);
     let mut result = [0; 16];
     decryptor.decrypt_block(ciphertext, &mut result);
