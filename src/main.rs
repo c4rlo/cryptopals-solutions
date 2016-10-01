@@ -13,7 +13,8 @@ mod set3;
 use std::env;
 use std::io::Write;
 
-fn parse_item_spec<T: IntoIterator<Item=String>>(args: T) -> Result<items::ItemsSpec, String> {
+fn parse_item_spec<T: IntoIterator<Item=String>>(args: T)
+                                           -> Result<items::ItemsSpec, String> {
     let parser = items::ItemsParser::new();
     let mut spec = items::ItemsSpec::new();
     for arg in args {

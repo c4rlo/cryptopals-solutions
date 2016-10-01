@@ -54,7 +54,8 @@ fn randpfx_oracle_with_key(randpfx: &[u8], arg: &[u8], key: &[u8],
     oracle_with_key(&plaintext, key, b64)
 }
 
-fn make_oracle<'a>(b64: &'a Base64Codec) -> Box<(FnMut(&[u8]) -> Vec<u8>) + 'a> {
+fn make_oracle<'a>(b64: &'a Base64Codec)
+                                        -> Box<(FnMut(&[u8]) -> Vec<u8>) + 'a> {
     let key: [u8; 16] = rand::random();
     Box::new(move |arg| oracle_with_key(arg, &key, &b64))
 }

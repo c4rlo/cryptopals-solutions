@@ -115,7 +115,8 @@ impl Base64Codec {
         result
     }
 
-    pub fn decode<T: Borrow<u8>, I: IntoIterator<Item=T>>(&self, enc: I) -> Vec<u8> {
+    pub fn decode<T: Borrow<u8>, I: IntoIterator<Item=T>>(&self, enc: I)
+                                                                    -> Vec<u8> {
         let iter = enc.into_iter().map(|e| *e.borrow());
         let mut result = Vec::new();
         for quad in iter.filter(|&b| b != b'\n').chunks(4) {
@@ -179,10 +180,12 @@ pub fn xor<T1: Borrow<u8>, I1: IntoIterator<Item=T1>,
     x1.into_iter().zip(x2).map(|(a, b)| a.borrow() ^ b.borrow()).collect()
 }
 
-pub fn repeating_key_xor<T1: Borrow<u8>, I1: IntoIterator<Item=T1>,
-                         T2: Borrow<u8>, J2: Iterator<Item=T2> + Clone,
-                         I2: IntoIterator<Item=T2, IntoIter=J2>>(content: I1, key: I2)
-                         -> Vec<u8> {
+pub fn repeating_key_xor<T1: Borrow<u8>,
+                         I1: IntoIterator<Item=T1>,
+                         T2: Borrow<u8>,
+                         J2: Iterator<Item=T2> + Clone,
+                         I2: IntoIterator<Item=T2, IntoIter=J2>>(
+                                              content: I1, key: I2) -> Vec<u8> {
     xor(content, key.into_iter().cycle())
 }
 

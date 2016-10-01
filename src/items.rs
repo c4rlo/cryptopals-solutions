@@ -1,5 +1,3 @@
-extern crate regex;
-
 use std::collections::HashSet;
 use regex::Regex;
 
@@ -79,7 +77,8 @@ impl ItemsParser {
         }
     }
 
-    pub fn parse_arg(&self, items: &mut ItemsSpec, arg: &str) -> Result<(), String> {
+    pub fn parse_arg(&self, items: &mut ItemsSpec, arg: &str)
+                                                         -> Result<(), String> {
         if self.num_regex.is_match(arg) {
             items.add(arg.parse().unwrap());
         } else if let Some(caps) = self.range_regex.captures(arg) {
@@ -98,7 +97,8 @@ impl ItemsParser {
                 (Some(l), Some(h)) => items.add_range(l, h),
                 (Some(l), None)    => items.add_all_from(l),
                 (None, Some(h))    => items.add_all_upto(h),
-                (None, None)       => return Err(format!("illegal arg spec: {}", arg))
+                (None, None)       => return Err(
+                                           format!("illegal arg spec: {}", arg))
             }
         } else {
             return Err(format!("illegal arg spec: {}", arg));
