@@ -43,7 +43,7 @@ const CHALLENGE12_SECRET: &'static [u8] =
 
 fn oracle_with_key(arg: &[u8], key: &[u8], b64: &Base64Codec) -> Vec<u8> {
     let mut plaintext = arg.to_vec();
-    plaintext.append(&mut b64.decode(CHALLENGE12_SECRET.iter().cloned()));
+    plaintext.append(&mut b64.decode(CHALLENGE12_SECRET));
     aes128_ecb_encrypt(&plaintext, key)
 }
 

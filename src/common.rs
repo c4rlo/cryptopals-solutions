@@ -1,4 +1,5 @@
 use std;
+use std::borrow::Borrow;
 use std::fmt;
 use std::ascii;
 use std::io::{BufReader,BufRead,Read};
@@ -82,9 +83,9 @@ impl Base64Codec {
         Base64Codec { dec_map: dec_map }
     }
 
-    pub fn encode(&self, b: &[u8]) -> Vec<u8> {
+    pub fn encode(&self, raw: &[u8]) -> Vec<u8> {
         let mut result = Vec::new();
-        for triple in b.chunks(3) {
+        for triple in raw.chunks(3) {
             let len = triple.len();
             let t0 = triple[0];
             let t1 = if len >= 2 { triple[1] } else { 0u8 };
@@ -114,10 +115,11 @@ impl Base64Codec {
         result
     }
 
-    pub fn decode<I: Iterator<Item=u8>>(&self, b: I) -> Vec<u8> {
+    pub fn decode<T: Borrow<u8>, I: IntoIterator<Item=T>>(&self, enc: I) -> Vec<u8> {
+        let iter = enc.into_iter().map(|e| *e.borrow());
         let mut result = Vec::new();
-        for quad in b.filter(|&b| b != b'\n').chunks(4) {
-            let len = quad.iter().cloned().take_while(|&b| b != b'=').count();
+        for quad in iter.filter(|&b| b != b'\n').chunks(4) {
+            let len = quad.iter().take_while(|&&b| b != b'=').count();
             let q0 = self.decode_lookup(quad[0]);
             let q1 = self.decode_lookup(quad[1]);
             let q2 = if len >= 3 { self.decode_lookup(quad[2]) } else { 0u8 };

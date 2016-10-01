@@ -61,8 +61,8 @@ impl<'a> Challenge17BlackBox<'a> {
         // Randomly select one of the 10 plaintexts
         let between = Range::new(0, CHALLENGE17_SECRETS.len());
         let mut rng = rand::thread_rng();
-        let plaintext_b64 = &CHALLENGE17_SECRETS[between.ind_sample(&mut rng)];
-        let plaintext = self.b64.decode(plaintext_b64.iter().cloned());
+        let plaintext_b64 = CHALLENGE17_SECRETS[between.ind_sample(&mut rng)];
+        let plaintext = self.b64.decode(plaintext_b64);
 
         let iv: [u8; AES_BLOCKSIZE] = rand::random();
         let ciphertext = aes128_cbc_encrypt(&plaintext, &self.key, &iv);
@@ -231,14 +231,14 @@ fn challenge17(b64: &Base64Codec) {
     let mut i = 0;
     for cracked in all_sorted {
         println!("  {}", escape_bytes(cracked));
-        let actual = b64.decode(CHALLENGE17_SECRETS[i].iter().cloned());
+        let actual = b64.decode(CHALLENGE17_SECRETS[i]);
         assert_eq!(actual, *cracked);
         i += 1;
     }
 }
 
 fn challenge18(b64: &Base64Codec) {
-    let ciphertext = b64.decode(CHALLENGE18_SECRET.iter().cloned());
+    let ciphertext = b64.decode(CHALLENGE18_SECRET);
     let plaintext = aes_ctr_crypt(&ciphertext, *b"YELLOW SUBMARINE", 0);
     println!("Challenge 18: {}", escape_bytes(&plaintext));
 }

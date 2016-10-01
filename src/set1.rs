@@ -174,8 +174,7 @@ fn challenge6(b64: &Base64Codec, corpus_cd: &[f64; 256]) {
     assert_eq!(37, edit_distance(b"this is a test", b"wokka wokka!!!"));
     println!("Challenge 6: Edit distance works.");
 
-    let bytes = file_bytes("6.txt");
-    let ciphertext = b64.decode(bytes);
+    let ciphertext = b64.decode(file_bytes("6.txt"));
     let cracked = crack_repeating_xor(&ciphertext, corpus_cd);
     print!("Challenge 6:\n{}", String::from_utf8_lossy(&cracked));
 }
