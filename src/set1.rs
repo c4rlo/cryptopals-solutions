@@ -22,7 +22,7 @@ fn chardist<I: Iterator<Item=u8>>(bytes: I) -> [f64; 256] {
 }
 
 fn chardist_diff(a: &[f64; 256], b: &[f64; 256]) -> f64 {
-    a.iter().zip(b.iter()).fold(0f64, |acc, (x, y)| acc + (x - y).powi(2))
+    a.iter().zip(b.iter()).map(|(x, y)| (x - y).powi(2)).sum()
 }
 
 fn corpus_chardist() -> [f64; 256] {
