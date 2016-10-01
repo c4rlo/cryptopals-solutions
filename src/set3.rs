@@ -201,7 +201,7 @@ impl Iterator for AesCtrKeyStream {
 }
 
 fn aes_ctr_crypt(input: &[u8], key: [u8; 16], nonce: u64) -> Vec<u8> {
-    xor(AesCtrKeyStream::new(key, nonce), input.iter().cloned())
+    xor(AesCtrKeyStream::new(key, nonce), input)
 }
 
 fn challenge17(b64: &Base64Codec) {

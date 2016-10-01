@@ -51,8 +51,7 @@ fn crack_single_xor(ciphertext: &[u8], corpus_cd: &[f64; 256])
     let mut best = SingleXorCandidate::new();
     for i in 0..256 {
         let key_byte = i as u8;
-        let decryption = xor(ciphertext.iter().cloned(),
-                    std::iter::repeat(key_byte));
+        let decryption = xor(ciphertext, std::iter::repeat(key_byte));
         let badness = chardist_diff(&chardist(decryption.iter().cloned()),
                     &corpus_cd);
         if badness < best.badness {
@@ -111,7 +110,7 @@ fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
         }
     }
 
-    xor_crypt(ciphertext.iter().cloned(), best_key.iter().cloned())
+    xor_crypt(ciphertext, best_key)
 }
 
 fn challenge1(b64: &Base64Codec) {
@@ -130,9 +129,7 @@ fn challenge2() {
     let input1 = b"1c0111001f010100061a024b53535009181c";
     let input2 = b"686974207468652062756c6c277320657965";
     let expected = b"746865206b696420646f6e277420706c6179";
-    let result = xor(
-        hex_decode(input1).iter().cloned(),
-        hex_decode(input2).iter().cloned());
+    let result = xor(hex_decode(input1), hex_decode(input2));
     assert_eq!(hex_decode(expected), result);
     println!("Challenge 2: Success.");
 }
@@ -165,7 +162,7 @@ fn challenge5() {
                                 24272765272a282b2f20430a652e2c65\
                                 2a3124333a653e2b2027630c692b2028\
                                 3165286326302e27282f");
-    let output = xor_crypt(input.iter().cloned(), b"ICE".iter().cloned());
+    let output = xor_crypt(&input[..], b"ICE");
     assert_eq!(expected, output);
     println!("Challenge 5: Success.");
 }

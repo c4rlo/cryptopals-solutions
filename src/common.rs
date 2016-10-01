@@ -173,14 +173,17 @@ pub fn file_lines(filename: &str) -> FileLines {
     open_file_buf(filename).lines()
 }
 
-pub fn xor<I1: Iterator<Item=u8>, I2: Iterator<Item=u8>>(x1: I1, x2: I2)
-            -> Vec<u8> {
-    x1.zip(x2).map(|(a, b)| a ^ b).collect()
+pub fn xor<T1: Borrow<u8>, I1: IntoIterator<Item=T1>,
+           T2: Borrow<u8>, I2: IntoIterator<Item=T2>>(x1: I1, x2: I2) -> Vec<u8>
+{
+    x1.into_iter().zip(x2).map(|(a, b)| a.borrow() ^ b.borrow()).collect()
 }
 
-pub fn xor_crypt<I1: Iterator<Item=u8>, I2: Iterator<Item=u8> + Clone>(
-            content: I1, key: I2) -> Vec<u8> {
-    xor(content, key.cycle())
+pub fn xor_crypt<T1: Borrow<u8>, I1: IntoIterator<Item=T1>,
+                 T2: Borrow<u8>, J2: Iterator<Item=T2> + Clone,
+                 I2: IntoIterator<Item=T2, IntoIter=J2>>(content: I1, key: I2)
+                 -> Vec<u8> {
+    xor(content, key.into_iter().cycle())
 }
 
 pub fn pkcs7_pad(b: &[u8], blocksize: usize) -> Vec<u8> {
@@ -256,9 +259,7 @@ pub fn aes128_cbc_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8; 16])
     let mut x = *iv;
     let mut result = Vec::new();
     for plainblock in pkcs7_pad(plaintext, 16).chunks(16) {
-        x = aes128_block_encrypt(
-            xor(plainblock.iter().cloned(), x.iter().cloned()).as_slice(),
-            key);
+        x = aes128_block_encrypt(xor(plainblock, &x).as_slice(), key);
         result.extend_from_slice(&x);
     }
     result
@@ -269,9 +270,7 @@ pub fn aes128_cbc_decrypt_raw(ciphertext: &[u8], key: &[u8], iv: &[u8; 16])
     let mut x: &[u8] = iv;
     let mut result = Vec::new();
     for cipherblock in ciphertext.chunks(16) {
-        result.extend(xor(
-                aes128_block_decrypt(cipherblock, key).iter().cloned(),
-                x.iter().cloned()));
+        result.extend(xor(&aes128_block_decrypt(cipherblock, key), x));
         x = cipherblock;
     }
     result
