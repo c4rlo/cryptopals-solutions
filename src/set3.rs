@@ -177,7 +177,7 @@ impl AesCtrKeyStream {
             nonce: nonce,
             counter: 0,
             block: [0; AES_BLOCKSIZE],
-            byte_idx: 0
+            byte_idx: AES_BLOCKSIZE
         }
     }
 }
@@ -186,17 +186,18 @@ impl Iterator for AesCtrKeyStream {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.byte_idx == 0 {
-            let mut plainblock = [0u8; 16];
+        if self.byte_idx == AES_BLOCKSIZE {
+            let mut plainblock = [0u8; AES_BLOCKSIZE];
             (&mut plainblock[..8]).write_u64::<LittleEndian>(self.nonce)
                 .unwrap();
             (&mut plainblock[8..]).write_u64::<LittleEndian>(self.counter)
                 .unwrap();
             self.block_encryptor.encrypt_block(&plainblock, &mut self.block);
+            self.byte_idx = 0;
             self.counter += 1;
         }
         let result = self.block[self.byte_idx];
-        self.byte_idx = (self.byte_idx + 1) % AES_BLOCKSIZE;
+        self.byte_idx += 1;
         Some(result)
     }
 }
