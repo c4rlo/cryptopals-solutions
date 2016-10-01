@@ -63,8 +63,7 @@ fn crack_single_xor(ciphertext: &[u8], corpus_cd: &[f64; 256])
 }
 
 fn edit_distance(a: &[u8], b: &[u8]) -> usize {
-    a.iter().zip(b).map(|(&x, &y)| (x ^ y).count_ones()).sum::<u32>()
-        as usize
+    a.iter().zip(b).map(|(&x, &y)| (x ^ y).count_ones()).sum::<u32>() as usize
 }
 
 fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
