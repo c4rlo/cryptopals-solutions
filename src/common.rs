@@ -179,10 +179,10 @@ pub fn xor<T1: Borrow<u8>, I1: IntoIterator<Item=T1>,
     x1.into_iter().zip(x2).map(|(a, b)| a.borrow() ^ b.borrow()).collect()
 }
 
-pub fn xor_crypt<T1: Borrow<u8>, I1: IntoIterator<Item=T1>,
-                 T2: Borrow<u8>, J2: Iterator<Item=T2> + Clone,
-                 I2: IntoIterator<Item=T2, IntoIter=J2>>(content: I1, key: I2)
-                 -> Vec<u8> {
+pub fn repeating_key_xor<T1: Borrow<u8>, I1: IntoIterator<Item=T1>,
+                         T2: Borrow<u8>, J2: Iterator<Item=T2> + Clone,
+                         I2: IntoIterator<Item=T2, IntoIter=J2>>(content: I1, key: I2)
+                         -> Vec<u8> {
     xor(content, key.into_iter().cycle())
 }
 

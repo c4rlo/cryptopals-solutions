@@ -109,7 +109,7 @@ fn crack_repeating_xor(ciphertext: &[u8], corpus_cd: &[f64; 256]) -> Vec<u8> {
         }
     }
 
-    xor_crypt(ciphertext, best_key)
+    repeating_key_xor(ciphertext, best_key)
 }
 
 fn challenge1(b64: &Base64Codec) {
@@ -161,7 +161,7 @@ fn challenge5() {
                                 24272765272a282b2f20430a652e2c65\
                                 2a3124333a653e2b2027630c692b2028\
                                 3165286326302e27282f");
-    let output = xor_crypt(&input[..], b"ICE");
+    let output = repeating_key_xor(&input[..], b"ICE");
     assert_eq!(expected, output);
     println!("Challenge 5: Success.");
 }
